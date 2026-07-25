@@ -1,0 +1,1940 @@
+<!DOCTYPE html>
+<!-- https://wizardace.com/d3-collapsible-tree/ -->
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>leafree</title>
+  <!-- 1. スタイルの設定 -->
+  <style>
+  .node {
+    cursor: pointer;
+  }
+
+  .node circle {
+    fill: #fff;
+    stroke: steelblue;
+    stroke-width: 1.5px;
+  }
+
+  /* 20260704 */
+  .node rect {
+    fill: #fff;
+    stroke: steelblue;
+    stroke-width: 1px;
+    /* width: 100;
+    height: 20; */
+  }
+
+  /* ドラッグ中のスタイル */
+  .node.dragging rect {
+    fill: #ffA500 !important;
+    stroke: #ff4500;
+  }
+
+  /* 共通のフォント設定 */
+  .node text {
+    font-family: sans-serif;
+    pointer-events: none;
+  }
+
+  /* 四角形「上」のノード名スタイル */
+  .node .node-name {
+    font-size: 11px;
+    fill: #666;
+    font-weight: bold;
+    text-anchor: middle;
+  }
+
+  /* 四角形「中」の入力テキストスタイル */
+  .node .node-disp {
+    font-size: 14px;
+    fill: #000;
+    text-anchor: left;
+    dominant-baseline: central; /* 縦方向中央揃え */
+  }
+
+  .link {
+    fill: none;
+    stroke: #555;
+    stroke-opacity: 0.6;
+    stroke-width: 1.5px;  /* 不透明度 */
+  }
+
+  .input-box-expr {
+    position: absolute;
+    border: 1px solid #999;
+    background: white;
+    font: 16px sans-serif;
+    padding: 4px;
+    z-index: 10;
+  }
+
+  .input-box-name {
+    position: absolute;
+    border: 1px bold #0f0f0f;
+    background: #ccc;
+    font: 16px sans-serif;
+    padding: 4px;
+    z-index: 10;
+  }
+
+  
+  </style>
+</head>
+
+<body>
+  <div id="controls">
+    <button id="save-btn">JSONで保存</button>
+    <button id="load-btn">JSONファイルを読み込み</button>
+    <!-- <label class="file-label" for="load-file">JSONファイルを読み込み</label> -->
+    <!-- <input type="file" id="load-file" accept=".json"> -->
+    <span style="color: #666; font-size: 13px;">※ コメント</span>
+  </div>
+
+  <div id="context-menu" style="display: none; position: absolute; background: white; border: 1px solid #ccc; z-index: 10;">
+  <ul>
+    <li id="menu-item-child" style="list-style: none; padding: 8px 16px; cursor: pointer;">子ノード挿入</li>
+    <li id="menu-item-copy" style="list-style: none; padding: 8px 16px; cursor: pointer;">コピー</li>
+    <li id="menu-item-paste" style="list-style: none; padding: 8px 16px; cursor: pointer;">子としてペースト</li>
+    <li id="menu-item-rename" style="list-style: none; padding: 8px 16px; cursor: pointer;">ノード名変更</li>
+    <li id="menu-item-reexpr" style="list-style: none; padding: 8px 16px; cursor: pointer;">式変更</li>
+    <li id="menu-item-delete" style="list-style: none; padding: 8px 16px; cursor: pointer;">削除</li>
+  </ul>
+  </div>
+
+  <svg width="1800" height="3000"></svg>
+  <script src="https://d3js.org/d3.v5.min.js"></script>
+  <script src="https://unpkg.com/mathjs"></script>
+  <script>
+
+  const menu = d3.select("#context-menu");
+
+
+
+
+// 描画の順番（重ね合わせ）:この直線コードを、通常のツリーのリンク（線）やノード（円・テキスト）の描画コードよりも前に書くか、後に書くかで重なり順が変わります。ノードの「後ろ」に通したい場合：ノード（<circle>など）を描画するコードより前に記述します。ノードの「手前」に重ねたい場合：ノードを描画するコードより後に記述します。
+
+
+//ノード名が重複していないかをチェックする
+// 兄弟間での重複だけがダメ
+function checkNodeName(root) {
+  // まずは単純に重複がなければ、ＯＫ
+  const allNodes = root.descendants();
+  const uniqueNames = new Set(allNodes.map(node => node.data.name));
+  console.log(uniqueNames);
+  const flagAllUnique = uniqueNames.size === allNodes.length;
+  if (flagAllUnique) {
+    return true;
+  }
+  // 重複があれば、兄弟間の重複がないかをチェックする。
+  const flag = checkNodeNameBrother(root);
+  function checkNodeNameBrother(nodeParent) {
+    const nodes = nodeParent.children;
+    if (nodes == null) { return true; }
+    const newMap = nodes.map(node => node.data.name);
+    console.log(newMap);
+    // const uniqueNames = new Set(nodes.map(node => node.data.name));
+    const uniqueNames = new Set(newMap);
+    const flagUnique = uniqueNames.size === nodes.length;
+    if (! flagUnique) {
+      return false;
+    }
+    // nodes.forEach(node, i)
+    if (nodes.find((node) => checkNodeNameBrother(node) === false)
+        !== undefined) {
+      return false;
+    }
+    return true;
+  }
+  return flag;
+}
+
+
+//ノードを探す
+// startNode を起点として、targetNameのノードを探す
+// どこの階層にもなければ null を返す
+function findNodeFromHere(startNode, targetName) {
+  // 全ノードを取得し、条件に合うものを全て抽出
+  const allTargetNodes = root.descendants().
+      filter(d => d.data.name === targetName);
+  if (allTargetNodes.length === 0) {
+    return null;
+  }
+  if (allTargetNodes.length === 1) {
+    return allTargetNodes[0]; 
+  }
+  // 指定されたノードの「下位ノード（子孫）」を探す。子優先。
+  var nodes = startNode.children;
+  if (nodes !== undefined) {
+    let found = nodes.find((node) => (node).data.name === targetName);
+    if (found) return found;
+  }
+  // 下位になければ、ルート（最上位）に達するまで「上の階層」へ遡る
+  let current = startNode;
+  while (current.parent) {
+    const parentNode = current.parent;
+    // 親ノード自身が目的のノードかチェック
+    if (parentNode.data.name === targetName) return parentNode;
+    // 親ノードから見た「他の枝（兄弟ノードとその下位）」を探す
+    // ※すでに探索済みの自分の枝（current）は除外して探すとより効率的です
+    found = parentNode.children.
+        find(d => d.data.name === targetName && d !== current);
+    if (found) return found;
+    // さらに上の親へ
+    current = parentNode;
+  }
+  return null;
+}
+
+
+function getNodeValue(node) {
+  if (node.data.value != null) {
+    return node.data.value;
+  }
+  calcEachNode(node);
+  return node.data.value;
+}
+
+
+//ノードの値を計算する
+// ループエラーに注意
+// load時は、disp,valueを全クリア後に、順番に呼び出す
+function calcEachNode(node) {
+  if (node.data.disp && node.data.disp !== null) { return; }  //タイミングによっては、あり
+  var expr = node.data.expr;
+  if (typeof expr !== "string" || ! expr.startsWith("=")) {
+    node.data.value = expr;
+    if (Number.isInteger(node.data.value)) {
+      node.data.disp = formatComma(node.data.value);
+    } else if (isNumber(node.data.value)) {
+      node.data.disp = d3.format(",.2f")(node.data.value);
+    } else {
+      node.data.disp = node.data.value;
+    }
+    return;
+  }
+
+  var dst = "";
+  var index = 1;
+  const length = expr.length;
+  while (index < length) {
+    if (expr[index] === "'") {
+      index += 1;
+      // if (expr[index] === "'")
+      var node_name = "";
+      while (expr[index] !== "'") {
+        node_name += expr[index];
+        index += 1;
+      }
+      index += 1;
+      const target_node = findNodeFromHere(node, node_name);
+      if (target_node === null) {
+        node.data.value = "#NAME?" + node_name + expr.substring(index);
+        node.data.disp = node.data.value;
+        return;
+      }
+      // console.log(node.link_src_set);
+      // console.log(typeof node.link_src_set);
+      node.link_src_set.add(target_node);
+      target_node.link_ref_set.add(node);
+      node.data.value = "#LOOP";
+      const value = getNodeValue(target_node);
+      if (typeof value === "string" && value.startsWith("#")) {
+        node.data.value = value + "?" + node_name + expr.substring(index);
+        node.data.disp = node.data.value;
+        return;
+      }
+      dst += value;
+    } else {
+      dst += expr[index];
+      index += 1;
+    }
+  }
+  const result = math.evaluate(dst);
+  node.data.value = result;
+  if (Number.isInteger(node.data.value)) {
+    node.data.disp = formatComma(node.data.value);
+  } else if (isNumber(node.data.value)) {
+    node.data.disp = d3.format(",.2f")(node.data.value);
+  } else {
+    node.data.disp = node.data.value;
+  }
+  return;
+}
+
+function clear_ref(node) {
+  node.data.disp = null;
+  node.data.value = null;
+  if (node.link_ref_set.size !== 0) {
+    root.descendants()
+      .filter(d => node.link_ref_set.has(d))
+      .forEach(d => clear_ref(d));
+  }
+  node.link_ref_set.clear();
+  return;
+}
+
+function reexpr_node(d) {
+  const inputExpr = d3.select("body")
+    .append("input")
+    .attr("type", "text")
+    .attr("class", "input-box-expr")
+    .style("position", "absolute") 
+    .style("left", (d3.event.pageX) + "px") 
+    .style("top", (d3.event.pageY) + "px")
+    .property("value", d.data.expr) 
+    .node();
+  saveReexprNode = d;
+  inputExpr.addEventListener("keydown", function(e) {
+      if (e.key === "Enter") {
+          reexprText();
+      }
+  });
+  function reexprText() {
+    const expr = inputExpr.value.trim();
+    const old_expr = saveReexprNode.data.expr;
+    if (expr !== "") {
+      if (old_expr === expr) {
+        alert(`式は変わっていません。`);
+        return;
+      }
+      inputExpr.remove();
+
+      saveReexprNode.data.expr = expr;
+      saveReexprNode.data.value = null;
+      saveReexprNode.data.disp = null;
+
+      // 以下のノードのvalueをクリアしてから、再計算
+      // エラーノード
+      // このノードを参照しているノード、さらにそのノードを参照しているノード
+      root.descendants()
+        .filter(d => d.data && (!d.data.value ||
+             (typeof d.data.value === "string") && (d.data.value.startsWith("#"))))
+        .forEach(d => {
+          d.data.disp = null;
+          d.data.value = null;
+        });
+
+      if (saveReexprNode.link_ref_set.size !== 0) {
+        root.descendants()
+          .filter(d => saveReexprNode.link_ref_set.has(d))
+          .forEach(d => clear_ref(d));
+      }
+      root.descendants()
+        .filter(d => d.data && (!d.data.value || d.data.value === null))
+        .forEach(d => {
+          calcEachNode(d);
+        });
+
+      console.log(root);
+
+      update(root);
+    } else {
+      inputExpr.remove();
+    }
+  }
+  inputExpr.focus();
+  inputExpr.select();
+  return;
+}
+
+
+
+function rename_node(d) {
+  const inputName = d3.select("body")
+    .append("input")
+    .attr("type", "text")
+    .attr("class", "input-box-name")
+    .style("position", "absolute") 
+    .style("left", (d3.event.pageX) + "px") 
+    .style("top", (d3.event.pageY) + "px")
+    .property("value", d.data.name) 
+    .node();
+
+  saveRenameNode = d;
+  inputName.addEventListener("keydown", function(e) {
+      if (e.key === "Enter") {
+          renameNameText();
+      }
+  });
+  function renameNameText() {
+    const name = inputName.value.trim();
+    const old_name = saveRenameNode.data.name;
+    if (name !== "") {
+      if (old_name === name) {
+        alert(`ノード名は変わっていません。`); // 💡ついでにバッククォートに修正
+        return;
+      }
+      const parent_node = saveRenameNode.parent;
+      const check_name = parent_node.children.find(child =>
+          child.data.name === name);
+      if (check_name !== undefined) {
+        alert(`ノード名「${name}」は重複しています。`); // 💡ついでにバッククォートに修正
+        inputName.focus();
+        return;
+      }
+      inputName.remove();
+
+      saveRenameNode.data.name = name;
+
+      // 以下のノードのvalueをクリアしてから、再計算
+      // エラーノード
+      // このノードを参照しているノード、さらにそのノードを参照しているノード
+      // 新ノード名と同一のノード名のノードを参照しているノード、さらに……
+
+      root.descendants()
+        .filter(d => d.data && (!d.data.value ||
+             (typeof d.data.value === "string") && (d.data.value.startsWith("#"))))
+        .forEach(d => {
+          d.data.disp = null;
+          d.data.value = null;
+        });
+
+      if (saveRenameNode.link_ref_set.size !== 0) {
+        root.descendants()
+          .filter(d => saveRenameNode.link_ref_set.has(d))
+          .forEach(d => clear_ref(d));
+      }
+
+      const sameNodes = root.descendants()
+        .filter(d => d.data && d.data.name && d.data.name == name)
+        .forEach(d => clear_ref(d));
+
+      root.descendants()
+        .filter(d => d.data && (!d.data.value || d.data.value === null))
+        .forEach(d => {
+          calcEachNode(d);
+        });
+
+      console.log(root);
+
+      update(root);
+    } else {
+      inputName.remove();
+    }
+  }
+  inputName.focus();
+  inputName.select(); 
+  return;
+}
+
+
+function delete_node(d) {
+  const num_child = d.descendants().length - 1;
+  if (num_child !== 0) {
+    message = "子孫ノード " + num_child + " 個含めて削除する(OK)か、削除中止する(キャンセル)か";
+    var result = confirm(message);
+    if (! result) {
+      return;
+    }
+  }
+  if (!d.parent) {
+    alert("ルートノードは削除できません。");
+    return;
+  }
+
+  d.descendants()
+    .forEach(child => clear_ref(child));
+
+    // --- 1. 生データ (.data) の階層構造から削除 ---
+  if (d.parent.data && d.parent.data.children) {
+    var pIdx = d.parent.data.children.indexOf(d.data);
+    if (pIdx > -1) {
+      d.parent.data.children.splice(pIdx, 1);
+    }
+  }
+  // --- 2. D3ノードデータ構造から削除 ---
+  var index = d.parent.children.indexOf(d);
+  if (index > -1) {
+    d.parent.children.splice(index, 1);
+  }
+  // 子ノードが0個になったら配列をnullにする（D3の折りたたみ等の挙動に合わせる）
+  if (d.parent.children.length === 0) {
+    d.parent.children = null;
+  }
+
+  root.descendants()
+    .filter(d => d.data && (!d.data.value || d.data.value === null))
+    .forEach(d => {
+      calcEachNode(d);
+    });
+
+  // --- 3. 画面の再描画 ---
+  update(root);
+}
+
+function insert_child() {
+    const inputExpr =
+        d3.select("body")
+        .append("input")
+        .attr("type", "text")
+        .attr("class", "input-box-expr")
+        .style("left", (d3.event.pageX) + "px") 
+        .style("top", (d3.event.pageY) + "px")
+        .node();
+    inputExpr.focus();
+    function commitTextExpr() {
+        const expr = inputExpr.value.trim();
+        leftExpr = d3.select("input").style("left");
+        topExpr = d3.select("input").style("top");
+        inputExpr.remove();
+        if (expr !== "") {
+            global_expr = expr;
+            const inputName =
+                d3.select("body")
+                .append("input")
+                .attr("type", "text")
+                .attr("class", "input-box-name")
+                // 【v5対応】d3.event から画面上の絶対座標を取得
+                .style("left", leftExpr) //(d3.event.pageX) + "px") 
+                .style("top", topExpr) //(d3.event.pageY) + "px")
+                .node();
+            inputName.addEventListener("keydown", function(e) {
+                if (e.key === "Enter") {
+                    commitTextName();
+                }
+            });
+            function commitTextName() {
+                const name = inputName.value.trim();
+                inputName.remove();
+                if (name !== "") {
+                    // SVG内にtext要素を追加
+                    global_name = name;
+                    // 追加する新しいノードのデータ
+                    if (parent_node === null) {
+                      // 直下の子ノード（children）の data.name から探す
+                      const check_name = root.children.find(child =>
+                          child.data.name === name);
+                      if (check_name !== undefined) {
+                        alert("ノード名「${name}」は重複しています。");
+                        return;
+                      }
+
+                      let newNodeData = { name: global_name,
+                           expr:global_expr,
+                            customX: new_node_x, customY: new_node_y, children: [] };
+                      newNode = d3.hierarchy(newNodeData);
+                      newNode.link_src_set = new Set();
+                      newNode.link_ref_set = new Set();
+                      newNode.depth = root.depth + 1;
+                      newNode.parent = root;
+                      root.children.push(newNode);
+                      root.data.children.push(newNodeData);
+                  } else {
+                      if (parent_node.children) {
+                        const check_name = parent_node.children.find(child =>
+                            child.data.name === name);
+                        if (check_name !== undefined) {
+                          alert("ノード名「${name}」は重複しています。");
+                          return;
+                        }
+                      }
+                      let newNodeData = { name: global_name,
+                           expr:global_expr,
+                            children: [] };
+                      if (! parent_node.children) {
+                        parent_node.children = [];
+                        parent_node.data.children = [];
+                      }
+                      newNode = d3.hierarchy(newNodeData);
+                      newNode.link_src_set = new Set();
+                      newNode.link_ref_set = new Set();
+                      newNode.depth = parent_node.depth + 1;
+                      newNode.parent = parent_node;
+                      parent_node.children.push(newNode);
+                      parent_node.data.children.push(newNodeData);
+                  }
+                  console.log("data", data);
+                  // root = d3.hierarchy(data);
+                  // tree(root);
+                  console.log("root", root);
+
+                  //暫定
+                  root.descendants()
+                    .filter(d => d.data && (!d.data.disp || d.data.disp === null))
+                    .forEach(d => {
+                      calcEachNode(d);
+                    });
+
+                  update(root);
+
+                }
+            }
+            inputName.focus();
+        }
+    }
+
+    inputExpr.addEventListener("keydown", function(e) {
+        if (e.key === "Enter") {
+            commitTextExpr();
+        }
+    });
+}
+
+function copy_node(d) {
+  var jsonString = JSON.stringify(d.data, null, 2);
+  console.log(jsonString);
+// navigator.clipboard.writeText(jsonString).then(() => {
+//   console.log("JSONをクリップボードにコピーしました");
+// }).catch(err => {
+//   console.error("コピーに失敗しました", err);
+// });
+
+  // 2. メモ帳やSlack、Excel等にきれいに貼り付けられるように「テキストツリー」にする
+  var textLines = [];
+  d.descendants().forEach(function(node) {
+    // 自分の階層（depth）に応じてインデント（スペースやタブ）を付与する
+    // ルートからの相対的な深さを計算（選択したノードを基準にする）
+    var relativeDepth = node.depth - d.depth;
+    var indent = "\t".repeat(relativeDepth); // スペース2つで表現（Excel用なら "\t".repeat() がおすすめ）
+    
+    // 表示名（お使いのデータ構造に合わせて name や label 等に変更してください）
+    var nodeName = node.data.expr || "名称未設定";
+    
+    textLines.push(indent + nodeName);
+  });
+  var plainTextTree = textLines.join("\n");
+
+  // 3. クリップボードAPIを使用して書き込み
+  // モダンブラウザの標準機能（ClipboardItem）を使い、貼り付け先アプリに応じて形式を自動選択させます
+  if (navigator.clipboard && window.ClipboardItem) {
+    var blobText = new Blob([plainTextTree], { type: 'text/plain' });
+    // もし他アプリがJSONとして明示的に受け取りたい場合に対応
+    var blobJson = new Blob([jsonString], { type: 'text/json' }); // 安全のためプレーンテキストとして渡すのが確実
+
+    var item = new ClipboardItem({
+      'text/json': blobJson
+      // 'text/plain': blobText
+      // 他のWebアプリ等でJSONオブジェクトとしてそのままパースさせたい場合は、plainTextTree の代わりに jsonString のBlobを渡しても良いです
+    });
+
+    // ここでは最も汎用的な「テキストツリー（プレーンテキスト）」を優先して書き込みます
+    // ※ JSONをそのまま渡したい場合は、下の行を `navigator.clipboard.writeText(jsonString)` に書き換えてください。
+    navigator.clipboard.write([item]).then(function() {
+      console.log("外部クリップボードにコピーしました（テキストツリー形式）");
+    }).catch(function(err) {
+      console.error("コピーに失敗しました:", err);
+      // フォールバック
+      fallbackCopyText(plainTextTree);
+    });
+  } else {
+    // 古いブラウザ用のフォールバック
+    fallbackCopyText(plainTextTree);
+  }
+}
+
+
+/**
+ * 従来の execCommand を使った簡易フォールバック
+ */
+function fallbackCopyText(text) {
+  var textArea = document.createElement("textarea");
+  textArea.value = text;
+  document.body.appendChild(textArea);
+  textArea.select();
+  try {
+    document.execCommand('copy');
+    console.log("フォールバック機能でコピーしました");
+  } catch (err) {
+    console.error("フォールバックコピーも失敗しました", err);
+  }
+  document.body.removeChild(textArea);
+}
+
+/**
+ * クリップボードにあるデータを、指定されたノードの子ノードとしてペーストする
+ * @param {Object} targetNode - ペースト先となるD3のノードオブジェクト
+ */
+function paste_node(targetNode) {
+  if (!clipboardData) {
+    alert("クリップボードにコピーされたノードがありません。");
+    return;
+  }
+  
+  // ペーストするたびに新しい参照を作るため、再度ディープコピー
+  var newDataRaw = structuredClone(clipboardData);
+
+  // --- 1. 生データ (.data) のチルドレンに追加 ---
+  if (!targetNode.data.children) {
+    targetNode.data.children = [];
+  }
+  targetNode.data.children.push(newDataRaw);
+
+  // --- 2. D3のノード構造 (.children) に新ノードとして追加 ---
+  // 新しい生データから、D3の階層ノード（d3.hierarchy）を組み立てる
+  var newNode = d3.hierarchy(newDataRaw);
+  
+  // 新しいノード配下すべての親参照（.parent）や深度（.depth）を正しくセットする
+  newNode.descendants().forEach(function(n) {
+    // 既存のツリー構造に合わせるため、親と深度を再計算
+    if (n === newNode) {
+      n.parent = targetNode;
+      n.depth = targetNode.depth + 1;
+    } else {
+      // 子孫ノードたちの親参照と深度
+      n.depth = n.parent.depth + 1;
+    }
+    
+    // 必要に応じて一意のIDを付与する（もし内部で id を管理している場合）
+    // n.id = ++globalIdCounter; 
+  });
+
+  if (!targetNode.children) {
+    targetNode.children = [];
+  }
+  targetNode.children.push(newNode);
+
+  console.log(targetNode.data.name + " の配下にペーストしました。");
+
+  // --- 3. 画面の再描画 ---
+  update(root);
+}
+
+
+  var data_org = {
+    "name": "A", "disp":10,
+    "children": [
+      { "name": "B", "disp":20 },
+      {
+        "name": "C", "disp":"abcdef",
+        "children": [{ "name": "D", "disp":40 }, { "name": "E", "disp":50 }, { "name": "F", "disp":60 }]
+      },
+      { "name": "G", "disp":"あいうえお" },
+      {
+        "name": "H", "disp":80,
+        "children": [{ "name": "I", "disp":90 }, { "name": "J", "disp":100 }]
+      },
+      { "name": "K", "disp":110 }
+    ]
+  };
+  var data = {
+    "name": "A", "disp":"テスト", "value":"テスト", "expr":"テスト",
+    "children": [
+      { "name": "B", "disp":"2,100", "value":2100, "expr": "='C'+600"  },
+      {
+        "name": "C", "disp":"1,500", "value":1500, "expr": "='D'+'E'+'F'",
+        "children": [{ "name": "D", "disp":"400", "value":400, "expr":40 },
+                     { "name": "E", "disp":"500", "value":500, "expr":"=50" },
+                     { "name": "F", "disp":"600", "value":600, "expr":"600" }]
+      },
+      { "name": "D", "disp":"あいうえお", "value":"あいうえお", "expr":"あいうえお" },
+      {
+        "name": "H", "disp":"あいうえおかきくけこ", "value":"あいうえおかきくけこ", "expr":"あいうえおかきくけこ",
+        "children": [
+            { "name": "I", "disp":"90", "value":90, "expr":"=90<100?1:0" },
+            { "name": "J", "disp":100, "value":100, "expr":"=100" }
+          ]
+      },
+      { "name": "K", "disp":110, "value":1100, "expr":"=110" }
+    ]
+  };
+
+  var global_expr = "=0";
+
+  width = 1800;
+  height = 3000;
+var margin = { top: 20, right: 90, bottom: 30, left: 90 };
+var width = 960 - margin.left - margin.right; // 既存の width があればそれを利用してください
+
+  const formatComma = d3.format(",");
+
+  function isNumber(value) {
+   return typeof value === 'number' && Number.isFinite(value);
+  }
+
+  // 3. 描画用データの変換
+  // root = d3.hierarchy(data);
+  root = d3.hierarchy(data);
+  
+  const treeLayout = d3.tree().size([800, 600]); // 縦横の基準値
+  treeLayout(root);
+
+  root.descendants()
+      .forEach(d => {
+        // if (d.data.link_src_set) {
+        //   d.data.link_src_set.clear();
+        // } else {
+          d.link_src_set = new Set();
+        // }
+        // if (d.data.link_ref_set) {
+        //   d.data.link_ref_set.clear();
+        // } else {
+          d.link_ref_set = new Set();
+        // }
+      });
+
+  root.descendants()
+    // d.data や d.data.expr が null / undefined の場合のクラッシュを防ぐ
+    .filter(d => d.data && typeof d.data.expr === 'string' && d.data.expr.startsWith("="))
+    .forEach(d => {
+      d.data.disp = null;
+      d.data.value = null;
+    });
+  root.descendants()
+    .filter(d => d.data && d.data.disp === null)
+    .forEach(d => {
+      calcEachNode(d);
+    });
+  
+  root.x0 = height / 2;
+  root.y0 = 0;
+  // g = undefined;
+  // initTree(data);
+
+  // 最初はすべてのノードが中央左（rootの位置）から生まれるように初期座標を全ノードに強制セット
+  root.descendants().forEach(function(d) { d.x0 = root.x0; d.y0 = root.y0; });
+
+  // 四角形のサイズ定義...
+
+  // 四角形のサイズ定義（位置計算の基準にしやすくするため変数化）
+  var rectW = 100;
+  var rectH = 30; // 文字が収まりやすいよう高さを30に調整
+
+  var tree = d3.tree().size([height, width - 160]);
+
+  // 4. svgデータの描画用データの変換
+  g = d3.select("svg").append("g").attr("transform", "translate(80,0)");
+  // update(root);
+
+  // var svg = document.querySelector("svg");
+  var svg = d3.select("svg");
+  console.log(svg)
+  // 2. ダブルクリックイベントの追加 (v5では引数にeventは不要です)
+  // svg.on はerror
+  svg.on("dblclick", function() {
+    // 既に編集中（inputタグが存在する）の場合は何もしない
+    if (document.querySelector(".input-box")) return;
+
+    // 【v5対応】d3.mouse(this) でSVG内の座標を取得
+    const coords = d3.mouse(this);
+    // new_node_x = coords[0];
+    // new_node_y = coords[1];
+    new_node_y = coords[0];
+    new_node_x = coords[1];
+
+    parent_node = null;
+    insert_child();
+
+  });
+
+  // 5. クリック時の呼び出し関数
+  function toggle(d) {
+    if(d.children) {
+      d._children = d.children;
+      d.children = null;
+    } else {
+      d.children = d._children;
+      d._children = null;
+    }
+  }
+
+  // ６.svg要素の更新関数
+  var i = 0;
+
+  function initTree(newData) {
+    console.log("initTree", "start");
+    g.selectAll("*").remove();
+
+    root = d3.hierarchy(newData);
+    root.descendants()
+      .forEach(d => {
+        // if (d.data.link_src_set) {
+        //   d.data.link_src_set.clear();
+        // } else {
+          d.link_src_set = new Set();
+        // }
+        // if (d.data.link_ref_set) {
+        //   d.data.link_ref_set.clear();
+        // } else {
+          d.link_ref_set = new Set();
+        // }
+      });
+    root.descendants()
+      // .filter(d => d.data && typeof d.data.expr === 'string'
+      //     && d.data.expr.startsWith("="))
+      .forEach(d => {
+        d.data.disp = null;
+        d.data.value = null;
+      });
+    root.descendants()
+      .filter(d => d.data && (!d.data.disp || d.data.disp === null))
+      .forEach(d => {
+        calcEachNode(d);
+      });
+    if (root.data.customX !== undefined && root.data.customY !== undefined) {
+        root.hasMoved = true;
+        root.x = root.data.customX;
+        root.y = root.data.customY;
+    } else {
+      // root.x0 = height / 2;
+      // root.y0 = 0;
+      root.x = height / 2;
+      root.y = 0;
+    }
+    i = 0;
+    update(root);
+  }
+
+  d3.select("#save-btn").on("click", function() {
+    saveDataToFile();
+  });
+
+// 保存ボタンなどのクリックイベントに紐付けます
+async function saveDataToFile() {
+  try {
+    // 1. 「名前を付けて保存」ダイアログを表示
+    const handle = await window.showSaveFilePicker({
+      suggestedName: 'my-d3-data.json', // 初期表示のファイル名
+      types: [{
+        description: 'JSON Files',
+        accept: { 'application/json': ['.json'] } // 拡張子の制限
+      }]
+    });
+
+    // 2. データを文字列に変換して書き込み
+    const writable = await handle.createWritable();
+    const jsonString = JSON.stringify(root.data, null, 2);
+    
+    await writable.write(jsonString);
+    await writable.close();
+    
+    // alert('保存が完了しました！');
+  } catch (err) {
+    // ユーザーがキャンセルした場合はここにきます
+    console.log('保存がキャンセルされました:', err);
+  }
+}
+
+// ボタン要素を取得
+const loadButton = document.getElementById('load-btn');
+
+// 必ずクリックイベントの中で showOpenFilePicker を実行する
+loadButton.addEventListener('click', async () => {
+  try {
+    // 1. ファイル選択ダイアログを開く（クリック直後なので安全）
+    const [handle] = await window.showOpenFilePicker({
+      types: [{
+        description: 'データファイル',
+        accept: {
+          'application/json': ['.json'],
+          'text/csv': ['.csv']
+        }
+      }]
+    });
+
+    // 2. ファイルの内容を取得
+    const file = await handle.getFile();
+    const text = await file.text();
+
+    // 3. 拡張子に応じてパース（D3.jsでの処理）
+    // let data;
+    if (file.name.endsWith('.json')) {
+      data = JSON.parse(text);
+    } else if (file.name.endsWith('.csv')) {
+      data = d3.csvParse(text); // D3.jsの機能でCSVをパース
+    }
+
+    console.log('読み込み成功:', data);
+    // ここにD3.jsの描画処理などを記述します
+    initTree(data);
+
+    // 1. ツリーレイアウトを適用（仮のサイズで一度配置）
+    //const treeLayout = d3.tree().size([800, 600]); // 縦横の基準値
+    // treeLayout(root);
+
+    // // 2. 配置された全ノードの座標から、最大のXとYを探す
+    //  const nodes = root.descendants();
+    // // // const maxX = d3.max(nodes, d => d.customX !== undefined ? d.customX : d.x);
+    // // // const maxY = d3.max(nodes, d => d.customY !== undefined ? d.customY : d.y);
+    // const maxX = d3.max(nodes, d => d.x);
+    // const maxY = d3.max(nodes, d => d.y);
+    // // console.log(maxX, maxY);
+    // // console.log(root);
+    // // // 3. 余白（マージン）を足してSVGの新しいサイズを決定
+    // const margin = 50;
+    // // // const newWidth = maxX + (margin+100) * 2;
+    // // // const newHeight = maxY + margin * 2;
+    // const newHeight = maxX + (margin+0) * 2;
+    // const newWidth = maxY + (margin+100) * 2;
+    // // console.log(newWidth, newHeight);
+    // // // 4. SVGのサイズをぴったりに更新
+    // d3.select("svg")
+    //    .attr("width", newWidth)
+    //    .attr("height", newHeight)
+    //    .attr("viewBox", `0 0 ${newWidth} ${newHeight}`);
+      } catch (err) {
+        // ユーザーがダイアログの「キャンセル」を押した場合もここに来ます
+        if (err.name === 'AbortError') {
+          console.log('ユーザーによって読み込みがキャンセルされました');
+        } else {
+          console.error('エラーが発生しました:', err);
+        }
+      }
+    
+    update(root);
+});
+
+  // var drag = d3.drag()
+  //   .on("start", function(d) {
+  //     d3.select(this).classed("dragging", true);
+  //   })
+  //   .on("drag", function(d) {
+  //     d.hasMoved = true;
+
+  //     var deltaX = d3.event.dy; 
+  //     var deltaY = d3.event.dx;
+
+  //     d.descendants().forEach(function(node) {
+  //       node.hasMoved = true;
+  //       node.x += deltaX;
+  //       node.y += deltaY;
+        
+  //       node.data.customX = node.x;
+  //       node.data.customY = node.y;
+  //     });
+
+  //     g.selectAll(".node")
+  //       .attr("transform", function(node) { 
+  //         return "translate(" + node.y + "," + node.x + ")"; 
+  //       });
+
+  //     g.selectAll(".link")
+  //       .attr("d", d3.linkHorizontal()
+  //         .x(function(l) { return l.y; })
+  //         .y(function(l) { return l.x; })
+  //       );
+  //   })
+  //   .on("end", function(d) {
+  //     d3.select(this).classed("dragging", false);
+  //     update(d);
+  //   });
+
+  // drag = d3.drag()
+  //   .on("start", function(d) {
+  //     d3.select(this).classed("dragging", true);
+  //     // ドラッグ開始時に、一時的に全ノードのポインタイベントを有効化、
+  //     // ただし自分自身とその子孫はドロップ先から除外するため pointer-events を none にする
+  //     g.selectAll(".node").style("pointer-events", "auto");
+  //     d3.select(this).style("pointer-events", "none");
+  //     // （必要に応じて、子孫ノードのDOM要素も pointer-events: none にしてください）
+  //     // ★ 追加: ドラッグ開始時、自分とその子孫の「元の座標」をすべて退避（保存）する
+  //     originCoordinates = {};
+  //     d.descendants().forEach(function(node) {
+  //       // 各ノードの一意な識別子（なければノードの参照やデータ等）をキーにして保存
+  //       // ここでは node.id または node.data.id など一意のキー、無ければ node.data 自体をキーにします
+  //       var key = node.id || node.data.id || JSON.stringify(node.data.name);
+  //       originCoordinates[key] = {
+  //         x: node.x,
+  //         y: node.y,
+  //         customX: node.data.customX,
+  //         customY: node.data.customY
+  //       };
+  //     });
+  //   })
+  //   .on("drag", function(d) {
+  //     d.hasMoved = true;
+
+  //     // 縦横の移動量が逆になっていた部分を修正（必要に応じて戻してください）
+  //     var deltaX = d3.event.dx; 
+  //     var deltaY = d3.event.dy;
+
+  //     d.descendants().forEach(function(node) {
+  //       node.hasMoved = true;
+  //       // 横型ツリー（xとyが反転している描画）に合わせた座標更新
+  //       node.x += deltaY;
+  //       node.y += deltaX;
+        
+  //       node.data.customX = node.x;
+  //       node.data.customY = node.y;
+  //     });
+
+  //     // ノードの位置を更新（現状のレンダリング通り y, x の順）
+  //     g.selectAll(".node")
+  //       .attr("transform", function(node) { 
+  //         return "translate(" + node.y + "," + node.x + ")"; 
+  //       });
+
+  //     // リンク（線）の位置を更新
+  //     g.selectAll(".link")
+  //       .attr("d", d3.linkHorizontal()
+  //         .x(function(l) { return l.y; })
+  //         .y(function(l) { return l.x; })
+  //       );
+  //   })
+  //   .on("end", function(d) {
+  //     d3.select(this).classed("dragging", false);
+  //     d3.select(this).style("pointer-events", null); 
+
+  //     var targetElement = document.elementFromPoint(d3.event.sourceEvent.clientX, d3.event.sourceEvent.clientY);
+  //     var targetNodeElement = targetElement ? targetElement.closest(".node") : null;
+
+  //     if (targetNodeElement && targetNodeElement !== this) {
+  //       var targetData = d3.select(targetNodeElement).datum();
+
+  //       // --- 1. 元の親（データとノード両方）から自分を削除する ---
+  //       if (d.parent) {
+  //         // 生データ (.data) のチルドレンから削除
+  //         if (d.parent.data && d.parent.data.children) {
+  //           var pIdx = d.parent.data.children.indexOf(d.data);
+  //           if (pIdx > -1) {
+  //             d.parent.data.children.splice(pIdx, 1);
+  //           }
+  //         }
+
+  //         // D3ノードデータ構造のチルドレンから削除
+  //         var index = d.parent.children.indexOf(d);
+  //         if (index > -1) {
+  //           d.parent.children.splice(index, 1);
+  //         }
+  //         if (d.parent.children.length === 0) {
+  //           d.parent.children = null;
+  //         }
+  //       }
+
+  //       // --- 2. 新しい親（データとノード両方）に自分を追加する ---
+  //       // 生データ (.data) のチルドレンに追加
+  //       if (targetData.data) {
+  //         if (!targetData.data.children) {
+  //           targetData.data.children = [];
+  //         }
+  //         targetData.data.children.push(d.data);
+  //       }
+
+  //       // D3ノードデータ構造のチルドレンに追加
+  //       if (!targetData.children) {
+  //         targetData.children = [];
+  //       }
+  //       targetData.children.push(d);
+        
+  //       // 最後に親の参照を新しい親に更新
+  //       d.parent = targetData; 
+
+  //       // ★ 追加: ドラッグしたノードとその子孫の座標を「ドラッグ前の位置」に完全にリ戻す
+  //       d.descendants().forEach(function(node) {
+  //         var key = node.id || node.data.id || JSON.stringify(node.data.name);
+  //         var original = originCoordinates[key];
+  //         if (original) {
+  //           node.x = original.x;
+  //           node.y = original.y;
+  //           node.data.customX = original.customX;
+  //           node.data.customY = original.customY;
+  //         }
+  //       });
+
+  //     }
+
+  //     update(root); 
+  //   });
+
+// ドラッグ前の元の座標を一時保存するためのオブジェクト
+var originCoordinates = {};
+
+// //子ノードとする移動ができない場合あり
+// var drag = d3.drag()
+//     .on("start", function(d) {
+//       d3.select(this).classed("dragging", true);
+      
+//       // 全体のポインタイベントをリセット
+//       g.selectAll(".node").style("pointer-events", "auto");
+      
+//       // ★ 改善: ドラッグするノード自身と、その中にある全ての要素（circle, text等）を完全にマウス透過させる
+//       d3.select(this).style("pointer-events", "none")
+//                      .selectAll("*").style("pointer-events", "none");
+
+//       // ドラッグ開始時、自分とその子孫の「元の座標」をすべて退避する
+//       originCoordinates = {};
+//       d.descendants().forEach(function(node) {
+//         var key = node.id || node.data.id || JSON.stringify(node.data.name);
+//         originCoordinates[key] = {
+//           x: node.x,
+//           y: node.y,
+//           customX: node.data.customX,
+//           customY: node.data.customY
+//         };
+//       });
+//     })
+//     .on("drag", function(d) {
+//       d.hasMoved = true;
+
+//       var deltaX = d3.event.dx; 
+//       var deltaY = d3.event.dy;
+
+//       d.descendants().forEach(function(node) {
+//         node.hasMoved = true;
+//         node.x += deltaY;
+//         node.y += deltaX;
+        
+//         node.data.customX = node.x;
+//         node.data.customY = node.y;
+//       });
+
+//       g.selectAll(".node")
+//         .attr("transform", function(node) { 
+//           return "translate(" + node.y + "," + node.x + ")"; 
+//         });
+
+//       g.selectAll(".link")
+//         .attr("d", d3.linkHorizontal()
+//           .x(function(l) { return l.y; })
+//           .y(function(l) { return l.x; })
+//         );
+//     })
+//     .on("end", function(d) {
+//       d3.select(this).classed("dragging", false);
+      
+//       // ★ 改善: マウス透過設定を完全にクリアする（子要素も含めて）
+//       d3.select(this).style("pointer-events", null)
+//                      .selectAll("*").style("pointer-events", null); 
+
+//       var targetElement = document.elementFromPoint(d3.event.sourceEvent.clientX, d3.event.sourceEvent.clientY);
+//       var targetNodeElement = targetElement ? targetElement.closest(".node") : null;
+
+//       console.log("targetElement",targetElement);
+//       console.log("targetNodeElement",targetNodeElement);
+//       console.log("this", this);
+
+//       // フラグ：他のノードへの結合が成功したかどうか
+//       var isDroppedOnNode = false;
+
+//       if (targetNodeElement && targetNodeElement !== this) {
+//         var targetData = d3.select(targetNodeElement).datum();
+        
+//         console.log("targetData", targetData);
+
+//         // 結合先ノードが「自分自身の既存の子孫ノード」である場合はループしてしまうため除外する
+//         var isTargetDescendant = d.descendants().includes(targetData);
+
+//         if (!isTargetDescendant) {
+//           // --- 1. 元の親から自分を削除 ---
+//           if (d.parent) {
+//             if (d.parent.data && d.parent.data.children) {
+//               var pIdx = d.parent.data.children.indexOf(d.data);
+//               if (pIdx > -1) d.parent.data.children.splice(pIdx, 1);
+//             }
+//             var index = d.parent.children.indexOf(d);
+//             if (index > -1) d.parent.children.splice(index, 1);
+//             if (d.parent.children.length === 0) d.parent.children = null;
+//           }
+
+//           // --- 2. 新しい親に自分を追加 ---
+//           if (targetData.data) {
+//             if (!targetData.data.children) targetData.data.children = [];
+//             targetData.data.children.push(d.data);
+//           }
+//           if (!targetData.children) targetData.children = [];
+//           targetData.children.push(d);
+          
+//           d.parent = targetData; 
+//           isDroppedOnNode = true; // ノードへの結合成功
+//         }
+//       }
+
+//       // ★ 条件分岐: 他のノードにドロップされた場合のみ「元の位置」に戻す
+//       if (isDroppedOnNode) {
+//         d.descendants().forEach(function(node) {
+//           var key = node.id || node.data.id || JSON.stringify(node.data.name);
+//           var original = originCoordinates[key];
+//           if (original) {
+//             node.x = original.x;
+//             node.y = original.y;
+//             node.data.customX = original.customX;
+//             node.data.customY = original.customY;
+//           }
+//         });
+//       } else {
+//         // 白地にドロップされた場合は、現在の移動先座標（customX / customY）のまま確定とするため、
+//         // 特に対避座標を戻す処理はせず、現在のドラッグ先のまま update(root) へ渡す
+//       }
+
+//       update(root); 
+//     });
+
+
+// 子ノードとする移動ができない場合あり
+var drag = d3.drag()
+    .on("start", function(d) {
+      d3.select(this).classed("dragging", true);
+      
+      // 全体のポインタイベントをリセット
+      g.selectAll(".node").style("pointer-events", "auto");
+      
+      // ドラッグするノード自身と、その中にある全ての要素（rect, text等）を完全にマウス透過させる
+      d3.select(this).style("pointer-events", "none")
+                     .selectAll("*").style("pointer-events", "none");
+
+      // ドラッグ開始時、自分とその子孫の「元の座標」をすべて退避する
+      originCoordinates = {};
+      d.descendants().forEach(function(node) {
+        var key = node.id || node.data.id || JSON.stringify(node.data.name);
+        originCoordinates[key] = {
+          x: node.x,
+          y: node.y,
+          customX: node.data.customX,
+          customY: node.data.customY
+        };
+      });
+    })
+    .on("drag", function(d) {
+      d.hasMoved = true;
+
+      // マウスの純粋な移動量を取得
+      var deltaX = d3.event.dx; 
+      var deltaY = d3.event.dy;
+
+      // ★ 修正：ドラッグしているノードとその子孫ノード「全員」の座標を一斉に同じ量だけ移動させる
+      d.descendants().forEach(function(node) {
+        node.hasMoved = true;
+        // 横型ツリーに合わせた座標更新（xに縦移動、yに横移動を加算）
+        node.x += deltaY;
+        node.y += deltaX;
+        
+        node.data.customX = node.x;
+        node.data.customY = node.y;
+      });
+
+      // ★ 重要：すべてのノードの描画位置を、それぞれのデータの最新座標（customX/Y）で即時更新する
+      g.selectAll(".node")
+        .attr("transform", function(node) { 
+          var currentX = node.data.customX !== undefined ? node.data.customX : node.x;
+          var currentY = node.data.customY !== undefined ? node.data.customY : node.y;
+          return "translate(" + currentY + "," + currentX + ")"; 
+        });
+
+      // ★ 重要：すべてのリンク（線）の位置を、それぞれの親・子の最新座標（customX/Y）で即時更新する
+      g.selectAll(".link")
+        .attr("d", function(l) {
+          if (!l || !l.source || !l.target) return null;
+
+          // 始点（親ノード側）は右端から伸ばすため、幅の半分を足す
+          var rectW = l.source.rectW ? (l.source.rectW / 2) : 0;
+          
+          var sourceY = l.source.data.customY !== undefined ? l.source.data.customY + rectW : l.source.y + rectW; 
+          var sourceX = l.source.data.customX !== undefined ? l.source.data.customX : l.source.x;
+
+          var targetY = l.target.data.customY !== undefined ? l.target.data.customY : l.target.y;
+          var targetX = l.target.data.customX !== undefined ? l.target.data.customX : l.target.x;
+
+          var pathGenerator = d3.linkHorizontal()
+            .x(function(p) { return p.yPos; })
+            .y(function(p) { return p.xPos; });
+
+          return pathGenerator({
+            source: { yPos: sourceY, xPos: sourceX },
+            target: { yPos: targetY, xPos: targetX }
+          });
+        });
+    })
+    .on("end", function(d) {
+      d3.select(this).classed("dragging", false);
+      
+      // マウス透過設定を完全にクリアする
+      d3.select(this).style("pointer-events", null)
+                     .selectAll("*").style("pointer-events", null); 
+
+      var targetElement = document.elementFromPoint(d3.event.sourceEvent.clientX, d3.event.sourceEvent.clientY);
+      var targetNodeElement = targetElement ? targetElement.closest(".node") : null;
+
+      var isDroppedOnNode = false;
+
+      if (targetNodeElement && targetNodeElement !== this) {
+        var targetData = d3.select(targetNodeElement).datum();
+        var isTargetDescendant = d.descendants().includes(targetData);
+
+        if (!isTargetDescendant) {
+          // --- 1. 元の親から自分を削除 ---
+          if (d.parent) {
+            if (d.parent.data && d.parent.data.children) {
+              var pIdx = d.parent.data.children.indexOf(d.data);
+              if (pIdx > -1) d.parent.data.children.splice(pIdx, 1);
+            }
+            var index = d.parent.children.indexOf(d);
+            if (index > -1) d.parent.children.splice(index, 1);
+            if (d.parent.children.length === 0) d.parent.children = null;
+          }
+
+          // --- 2. 新しい親に自分を追加 ---
+          if (targetData.data) {
+            if (!targetData.data.children) targetData.data.children = [];
+            targetData.data.children.push(d.data);
+          }
+          if (!targetData.children) targetData.children = [];
+          targetData.children.push(d);
+          
+          d.parent = targetData; 
+          isDroppedOnNode = true; 
+        }
+      }
+
+      // ★ 条件分岐: 他のノードにドロップされた場合のみ「元の位置」に戻す
+      if (isDroppedOnNode) {
+        d.descendants().forEach(function(node) {
+          var key = node.id || node.data.id || JSON.stringify(node.data.name);
+          var original = originCoordinates[key];
+          if (original) {
+            node.x = original.x;
+            node.y = original.y;
+            node.data.customX = original.customX;
+            node.data.customY = original.customY;
+          }
+        });
+      } else {
+        // 白地にドロップされた場合は、移動させた親の相対的な移動量を子孫にも伝填させるため、
+        // 子孫ノード全体の customX / customY をここで一括確定させます
+        var deltaX_final = d.x - originCoordinates[d.id || d.data.id || JSON.stringify(d.data.name)].x;
+        var deltaY_final = d.y - originCoordinates[d.id || d.data.id || JSON.stringify(d.data.name)].y;
+        
+        d.descendants().forEach(function(node) {
+          if (node !== d) {
+            node.x += deltaX_final;
+            node.y += deltaY_final;
+            node.data.customX = node.x;
+            node.data.customY = node.y;
+          }
+        });
+      }
+
+      update(root); 
+    });
+
+
+  function editNodeText(d, element) {
+    if (document.querySelector(".edit-input")) return;
+    //　表示位置が一番、左下になる
+    var inputX = d.y;// + 80;
+    var inputY = d.x;
+    // var inputY = d.y + 80;
+    // var inputX = d.x;
+    console.log("inputY", inputY);
+    console.log("inputX", inputX);
+
+    var input = document.createElement("input");
+    input.classList.add("edit-input");
+    input.value = d.data.disp;  //　暫定
+
+    input.name = "name";
+
+    svg = document.querySelector("svg")
+    const svgRect = svg.getBoundingClientRect();
+    inputX += svgRect.left;
+    inputY += svgRect.top;
+    // const inputX = svgRect.left + data.x - 50; // 中心に合わせるため微調整
+    // const inputY = svgRect.top + data.y - 15;
+    console.log("inputY", inputY);
+    console.log("inputX", inputX);
+
+    
+    // 入力フォームをノードの中央付近に重ねて表示
+    input.style.left = (inputX - 40) + "px";
+    input.style.top = (inputY - 12) + "px";
+    input.style.width = "100";//px";
+    
+    console.log(input)
+    document.body.appendChild(input);
+    input.focus();
+    input.select();
+
+    function commitEdit() {
+      console.log("commitEdit", "start")
+      var newName = input.value.trim();
+      if (newName !== "") {
+        d.data.disp = newName;  //暫定
+      }
+      console.log(d.data)
+      input.remove();
+      console.log(root)
+      update(root); // サイズの再計算が必要なため、rootからupdateをかける
+    }
+
+    input.addEventListener("keydown", function(e) {
+      if (e.key === "Enter") commitEdit();
+      if (e.key === "Escape") input.remove();
+    });
+
+    // input.addEventListener("blur", commitEdit);
+  }
+
+  // --- 2. 文字列の幅（ピクセル数）を正確に測定するヘルパー関数 ---
+   function getTextWidth(text, font) {
+    var canvas = document.createElement('canvas');
+    var context = canvas.getContext('2d');
+    context.font = font || '14px sans-serif';
+    var metrics = context.measureText(text);
+    return metrics.width;
+  }
+
+  function update(source) {
+  // 1. ツリー内の全ノード（展開されているもの）の数をカウント
+  var nodes = root.descendants();
+
+     // 1. ツリーレイアウトを適用（仮のサイズで一度配置）
+    const treeLayout = d3.tree().size([800, 600]); // 縦横の基準値
+    // treeLayout(root);
+
+    // 2. 配置された全ノードの座標から、最大のXとYを探す
+    // const nodes = root.descendants();
+    // const maxX = d3.max(nodes, d => d.customX !== undefined ? d.customX : d.x);
+    // const maxY = d3.max(nodes, d => d.customY !== undefined ? d.customY : d.y);
+    const maxX = d3.max(nodes, d => d.x);
+    const maxY = d3.max(nodes, d => d.y);
+    console.log(maxX, maxY);
+    console.log(root);
+    // 3. 余白（マージン）を足してSVGの新しいサイズを決定
+    const margin = 50;
+    // const newWidth = maxX + (margin+100) * 2;
+    // const newHeight = maxY + margin * 2;
+    const newHeight = maxX + (margin+0) * 2;
+    const newWidth = maxY + (margin+100) * 2;
+    console.log(newWidth, newHeight);
+    // 4. SVGのサイズをぴったりに更新
+    d3.select("svg")
+      .attr("width", newWidth)
+      .attr("height", newHeight)
+      .attr("viewBox", `0 0 ${newWidth} ${newHeight}`);
+
+  // 5. 新しいサイズに基づいてレイアウトを計算させる
+  var treeData = tree(root);
+    // treeLayout(root);  
+    // tree(root);
+
+    var duration = 500;
+
+        // 各ノードの過去位置を退避させてからツリーを再計算
+    var positions = {};
+    root.descendants().forEach(function(d) {
+      if (d.data.customX !== undefined && d.data.customY !== undefined) {
+        d.hasMoved = true;
+        d.x = d.data.customX;
+        d.y = d.data.customY;
+      }
+      if (d.hasMoved) {
+        positions[d.id] = { x: d.x, y: d.y };
+      }
+    });
+
+    // tree レイアウト位置を計算
+    tree(root);
+
+    // 子、孫方向の位置設定
+    // root.each(function(d) { d.y = d.depth * 320; });
+    // 手動移動したノードは固定位置を適用、それ以外は初期位置を計算
+    root.each(function(d) {
+      if (positions[d.id]) {
+        d.x = positions[d.id].x;
+        d.y = positions[d.id].y;
+      } else {
+        d.y = d.depth * 320;
+      }
+
+            // --- 3. 動的に各ノードの四角形の幅（width）を計算してデータに持たせる ---
+      var textW = getTextWidth(d.data.disp, '14px sans-serif');
+      d.rectW = Math.max(textW + 24, 50); // 左右の余白を足す。最低幅は50px。
+    });
+
+    // ノードデータをsvg要素に設定
+    var node = g.selectAll('.node')
+      .data(root.descendants(), function(d) { return d.id || (d.id = ++i); });
+
+          var customLines = [];
+    root.descendants().forEach(function(d) {
+        if (d.link_ref_set) {
+            d.link_ref_set.forEach(function(ref) {
+                customLines.push({ source: ref, target: d });
+                console.log(ref.x, ref.y);
+                console.log(d.x, d.y);
+            });
+        }
+    });
+
+    // console.log(drag);
+   var customLinkGroup = svg.select("g.custom-links");
+    if (customLinkGroup.empty()) {
+        customLinkGroup = svg.append("g").attr("class", "custom-links");
+    }
+
+    // line要素に対してデータをバインド
+    var customLink = customLinkGroup.selectAll("line.custom-line")
+        .data(customLines);
+
+    // 【Enter領域】新しく生成される線（初期位置はクリックされた親ノードの元座標）
+    var customLinkEnter = customLink.enter().append("line")
+        .attr("class", "custom-line")
+        .attr("stroke", "red")
+        .attr("stroke-width", 2)
+        .attr("stroke-dasharray", "4 4");
+
+    // 【Update領域（Enter＋既存の線）】アニメーション（transition）を伴って最新のノード中央座標へ結ぶ
+    // もし滑らかなアニメーションが不要なら .transition() と .duration(...) を削除してください
+    customLinkGroup.selectAll("line.custom-line").transition()
+        .duration(400) // 既存のアニメーション時間に合わせる
+        // X座標の補正: 四角形の左端(0)から「横幅の半分」を足して、箱の左右中央に線を刺す
+        .attr("x1", function(d) { return d.source.x + (d.source.rectW / 2); })
+        // Y座標の補正: 縦型ツリーなので source(上側) の箱の底辺（rectH/2）から線を出す
+        .attr("y1", function(d) { return d.source.y + (rectH / 2); })
+        
+        // ターゲット(下側) の箱の天辺（-rectH/2）に線を刺す
+        .attr("x2", function(d) { return d.target.x + (d.target.rectW / 2); })
+        .attr("y2", function(d) { return d.target.y - (rectH / 2); });
+
+    // 【Exit領域】不要になった（折りたたまれた）線を削除
+    customLink.exit().remove();
+
+//     var customLines = [];
+//     root.descendants().forEach(function(d) {
+//         if (d.link_ref_set) {
+//             d.link_ref_set.forEach(function(ref) {
+//                 customLines.push({ source: ref, target: d });
+//                 console.log(ref.x, ref.y);
+//                 console.log(d.x, d.y);
+//             });
+//         }
+//     });
+//     console.log("customLines", customLines);
+
+//     // 2. リンク（直線）の描画領域とデータバインド
+// // 1. カスタムリンクデータの生成
+// var refEnter = svg.append("g")
+//     .attr("class", "custom-links")
+//     .selectAll("line")
+//     .data(customLines)
+//     .enter().append("line")
+//     // 縦型ツリー用の座標設定（X座標にx、Y座標にyをマッピング）
+//     .attr("x1", function(d) { return d.source.x; })
+//     .attr("y1", function(d) { return d.source.y; })
+//     .attr("x2", function(d) { return d.target.x; })
+//     .attr("y2", function(d) { return d.target.y; })
+//     .attr("stroke", "red")          // 目立たせるために赤色
+//     .attr("stroke-width", 2)        // 線の太さ
+//     .attr("stroke-dasharray", "4 4"); // 破線（点線）
+
+// 2. ノード（要素）の描画と初期位置の設定
+var nodeEnter = node.enter().append("g")
+    .attr("class", "node")
+    .attr("transform", function(d) {
+        // 親（source）の初期位置を取得。存在しなければ現在の位置、それもなければ0を代入
+        var xPos = (source.x0 !== undefined && !isNaN(source.x0)) ? source.x0 : (source.x || 0);
+        var yPos = (source.y0 !== undefined && !isNaN(source.y0)) ? source.y0 : (source.y || 0);
+        // 【修正】縦型ツリーなので translate(横位置, 縦位置) の順に修正
+        return "translate(" + xPos + "," + yPos + ")";
+    })
+    // 各種イベントハンドラーの登録
+    .on("click", function(d) { 
+        toggle(d); 
+        update(d); 
+    })
+    .call(drag)
+    .on("dblclick", function(d) { 
+        editNodeText(d, this);
+    });
+
+// 3. 四角形を追加（初期状態から配置）
+var node_rect = nodeEnter.append("rect")
+    .attr("width", function(d) { return d.rectW; })
+    .attr("height", rectH)
+    // 【提案】もし線の刺さる位置を左右中央にしたい場合は x を「-d.rectW / 2」に変更してください
+    .attr("x", 0) 
+    .attr("y", -rectH / 2) // Y軸を中心に合わせる
+    .style("fill", function(d) { return d._children ? "lightsteelblue" : "#fff"; })
+    .on("click", function(d) {
+        toggle(d);
+        update(d);
+    });
+
+// 4. 右クリックコンテキストメニューの制御
+node_rect.on("contextmenu", function(d) {
+    // ブラウザ標準の右クリックメニューをキャンセル
+    d3.event.preventDefault();
+    
+    // イベント座標の取得（D3のバージョンに応じてd3.event、またはグローバルeventを利用）
+    var currentEvent = d3.event || event;
+    
+    menu
+        .style("display", "block")
+        .style("left", (currentEvent.pageX + 10) + "px")
+        .style("top", (currentEvent.pageY + 10) + "px");
+
+    // メニューの各アクションの設定
+    d3.select("#menu-item-child").on("click", function() {
+        parent_node = d;
+        insert_child();
+        menu.style("display", "none");
+    });
+    d3.select("#menu-item-rename").on("click", function() {
+        rename_node(d);
+        menu.style("display", "none");
+    });
+    d3.select("#menu-item-reexpr").on("click", function() {
+        reexpr_node(d);
+        menu.style("display", "none");
+    });
+    d3.select("#menu-item-copy").on("click", function() {
+        copy_node(d);
+        menu.style("display", "none");
+    });
+    d3.select("#menu-item-paste").on("click", function() {
+        paste_node(d);
+        menu.style("display", "none");
+    });
+    d3.select("#menu-item-delete").on("click", function() {
+        delete_node(d);
+        menu.style("display", "none");
+    });
+});
+
+
+  // SVG上の他の場所をクリックしたときにメニューを閉じる
+  svg.on("click", function() {
+    menu.style("display", "none");
+  });
+
+  // ノード名（四角形の「上」用：初期状態は透明）
+  nodeEnter.append("text")
+      .attr("class", "node-name")
+      // .attr("x", rectW / 2)   // 四角形の中央
+      .attr("x", 0)
+      .attr("y", -rectH / 2) // 四角形の上辺
+      .attr("dy", "-6")      // 上辺から6px上に浮かせる
+      .text(function(d) { return d.data.name; })
+      .style("fill-opacity", 1e-6);
+
+    // 入力テキスト（四角形の「中」用：初期状態は透明）
+//    nodeEnter.append("text")
+//      .attr("class", "node-disp")
+//      // .attr("x", rectW / 2) // 四角形の中央
+//      .attr("x", 0)
+//      // .attr("width", function(d) { return d.rectW / 2; })
+//      .attr("width", function(d) { return d.rectW; })
+//      .attr("y", 0)         // 四角形の垂直中央
+//      .text(function(d) { return d.data.disp; })
+//      .style("fill-opacity", 1e-6);
+
+    nodeEnter.append("text")
+      .attr("class", "node-disp")
+      // ★ 右詰めの基準点（X座標）を、四角形の右端（d.rectW / 2）に設定する
+      .attr("x", function(d) { return d.rectW; })
+      // ★ 右詰め（テキストの末尾がX座標に揃う）にする
+      .attr("text-anchor", "end")
+      // ★ 右端にぴったりくっつきすぎるのを防ぐため、内側に少しマージン（例: 5px）を入れる
+      .attr("dx", "-5")
+      // 四角形の垂直中央に合わせるためのベースライン調整（フォントサイズに合わせて微調整してください）
+      .attr("dy", "0.35em") 
+      .attr("y", 0)         // 四角形の垂直中央（rectのyが -rectH/2 なので、y=0 が中央になります）
+      .text(function(d) { return d.data.disp; })
+      .style("fill-opacity", 1e-6);
+
+    // --- 【2. UPDATE 領域の設定】 ---
+    // enter と既存の node をマージしてアニメーション
+    var nodeUpdate = nodeEnter.merge(node);
+
+    nodeUpdate.select("text")
+      .text(d => d.data.name);
+    
+    // グループ全体の移動アニメーション
+    nodeUpdate.transition()
+      .duration(duration)
+      .attr("transform", function(d) { return "translate(" + d.y + "," + d.x + ")"; });
+
+    // 既存の四角形の色を更新（appendではなくselectを使う）
+    node_rect_update = nodeUpdate.select("rect")
+      .attr("width", function(d) { return d.rectW; })
+      .attr("height", rectH)
+      // .attr("x", function(d) { return -d.rectW / 2; }) // 横幅の半分をマイナスして中央に揃える
+      .attr("x", function(d) { return 0; }) // 横幅の半分をマイナスして中央に揃える
+      .attr("y", -rectH / 2) // 高さの半分をマイナスして中央に揃える
+
+      .style("fill", function(d) { return d._children ? "lightsteelblue" : "#fff"; });
+
+    // テキストを不透明にするアニメーション
+    nodeUpdate.select(".node-name")
+      .transition()
+      .duration(duration)
+      .style("fill-opacity", 1);
+
+    nodeUpdate.select(".node-disp")
+      .transition()
+      .duration(duration)
+      .text(function(d) { return d.data.disp; })
+      .style("fill-opacity", 1);
+
+
+    // --- 【3. EXIT 領域の設定】 ---
+    // 消えるノードのアニメーション
+    var nodeExit = node
+      .exit()
+      .transition()
+      .duration(duration)
+      .attr("transform", function(d) { return "translate(" + source.y + "," + source.x + ")"; })
+      .remove();
+
+    // 消えながらテキストを透明にする
+    nodeExit.select(".node-name")
+      .style("fill-opacity", 1e-6);
+
+    nodeExit.select(".node-disp")
+      .style("fill-opacity", 1e-6);
+
+var link = g.selectAll(".link")
+      .data(root.links(), function(d) { return d.target.id; });
+
+console.log("linkEnter");
+
+// リンク enter (親の元の位置からスタート)
+var linkEnter = link.enter().insert('path', "g")
+  .attr("class", "link");
+
+// ★ enterした後に、明示的にd属性を設定する（これで確実に実行・ログ出力されます）
+linkEnter.attr("d", function(d) {
+  // ここで初めて1本ずつの線の計算に入ります
+  // console.log("--- 線の描画処理が走りました ---");
+  
+  if (!d.source || !d.target) {
+    console.log("データが不正です: sourceまたはtargetがありません");
+    return null;
+  }
+
+  // 座標の安全な取得
+  var sY = (!isNaN(d.source.y)) ? d.source.y : 0;
+  var sX = (!isNaN(d.source.x)) ? d.source.x : 0;
+  var tY = (!isNaN(d.target.y)) ? d.target.y : 0;
+  var tX = (!isNaN(d.target.x)) ? d.target.x : 0;
+
+  // 四角形の幅の半分を足す（右端から線を伸ばすため）
+  var sourceRectW = d.source.rectW ? (d.source.rectW) : 0;
+
+  // パス生成ジェネレーター
+  var pathGenerator = d3.linkHorizontal()
+    .x(function(p) { return p.yPos; })
+    .y(function(p) { return p.xPos; });
+
+  // 生成して返す
+  return pathGenerator({
+    source: { yPos: sY + sourceRectW, xPos: sX },
+    target: { yPos: tY, xPos: tX }
+  });
+});
+
+// console.log("linkEnter")
+// // リンク enter (親の元の位置からスタート)
+// var linkEnter = link.enter().insert('path', "g")
+//   .attr("class", "link")
+//   .attr("d", function(d) {
+//     // 1. 各点の安全な座標（x, y）を事前にオブジェクトとして作成
+//     var sourceY = (d.source && d.source.y !== undefined && !isNaN(d.source.y)) ? d.source.y : 0;
+//     var sourceX = (d.source && d.source.x !== undefined && !isNaN(d.source.x)) ? d.source.x : 0;
+    
+//     var targetY = (d.target && d.target.y !== undefined && !isNaN(d.target.y)) ? d.target.y : 0;
+//     var targetX = (d.target && d.target.x !== undefined && !isNaN(d.target.x)) ? d.target.x : 0;
+
+//     // 前のステップで四角形の幅を `d.rectW / 2` に設定されていたため、
+//     // 親ノードの右端から線を伸ばすには `d.source.rectW / 2` を足します。
+//     var sourceRectW = d.source.rectW ? (d.source.rectW) : 0;
+
+//     // デバッグログ
+//     console.log(d.source.data.name, "rectW:", d.source.rectW, "->", d.target.data.name);
+
+//     // 2. D3に渡すための一時的なsource/targetオブジェクトを作成
+//     var linkGenerator = d3.linkHorizontal()
+//       // D3の横型ツリーにおける「X座標」は、描画上の「横軸（y）」を指定する
+//       .x(function(p) { return p.yPos; })
+//       // D3の横型ツリーにおける「Y座標」は、描画上の「縦軸（x）」を指定する
+//       .y(function(p) { return p.xPos; });
+
+//     // オブジェクト形式で始点と終点を渡してパス（d）を生成
+//     return linkGenerator({
+//       source: { yPos: sourceY + sourceRectW, xPos: sourceX },
+//       target: { yPos: targetY, xPos: targetX }
+//     });
+//   });
+
+//   console.log("linkUpdate")
+
+// // リンク update (正しい位置へアニメーション。親の右端から、子の左端へつなぐ)
+// var linkUpdate = linkEnter.merge(link);
+// linkUpdate
+//   .transition()
+//   .duration(duration)
+//   .attr("d", d3.linkHorizontal()
+//     // 線のスタート：親ノード（d.source）の右端（+ rectW）
+//     .source(function(d) { 
+//       var y = d.source.y !== undefined ? d.source.y : 0;
+//       var x = d.source.x !== undefined ? d.source.x : 0;
+//       console.log(d.source.data.name);
+//       console.log("rectW1", d.source.rectW)
+//       return [y + d.source.rectW, x]; 
+//     })
+//     // 線のゴール：子ノード（d.target）の左端
+//     .target(function(d) { 
+//       var y = d.target.y !== undefined ? d.target.y : 0;
+//       var x = d.target.x !== undefined ? d.target.x : 0;
+//       console.log("target", d.target.data.name);
+//       return [y, x]; 
+//     })
+//   );
+console.log("linkUpdate")
+
+// リンク update (正しい位置へアニメーション。親の右端から、子の左端へつなぐ)
+var linkUpdate = linkEnter.merge(link);
+
+linkUpdate
+  .transition()
+  .duration(duration)
+  // ★ 修正: ジェネレーターではなく、各データごとに実行される関数を定義する
+  .attr("d", function(d) {
+    if (!d.source || !d.target) return null;
+
+    // 座標の安全な取得
+    var sY = d.source.y !== undefined ? d.source.y : 0;
+    var sX = d.source.x !== undefined ? d.source.x : 0;
+    var tY = d.target.y !== undefined ? d.target.y : 0;
+    var tX = d.target.x !== undefined ? d.target.x : 0;
+
+    // 四角形の幅の半分（d.source.rectW / 2）を足して右端から線を伸ばす
+    // (お使いの四角形 rect の幅設定に合わせて調整してください)
+    var sourceRectW = d.source.rectW ? (d.source.rectW ) : 0;
+
+    // D3に独自のオブジェクト構造を認識させるためのパスジェネレーターを作成
+    var pathGenerator = d3.linkHorizontal()
+      .x(function(p) { return p.yPos; }) // 横軸にyPosをマッピング
+      .y(function(p) { return p.xPos; }); // 縦軸にxPosをマッピング
+
+    // 始点と終点を独自オブジェクトの形式で食わせて、pathの文字列（M... C...）を生成
+    return pathGenerator({
+      source: { yPos: sY + sourceRectW, xPos: sX },
+      target: { yPos: tY, xPos: tX }
+    });
+  });
+
+  console.log("link.exit")
+
+// リンク exit (親の現在の位置に縮んで消える)
+link
+  .exit()
+  .transition()
+  .duration(duration)
+  .attr("d", d3.linkHorizontal()
+    // 消え去るときは、親の現在の位置（source.y, source.x）に向かって縮ませる
+    .source(function(d) { 
+      console.log(d.source.data.name);
+      console.log("rectW2", d.source.rectW)
+      return [source.y + d.source.rectW, source.x]; })
+    // .target(function(d) { return [source.y + d.source.rectW, source.x]; })
+    .target(function(d) { return [target.y, target.x]; })
+  )
+  .remove();
+
+    // 次の動作のために現在位置を記憶
+    node.each(function(d) {
+      d.x0 = d.x;
+      d.y0 = d.y;
+    });
+
+    console.log(root);
+  } // function update 終わり
+
+
+ initTree(data);
+
+  </script>
+  </body>
+
+</html>
