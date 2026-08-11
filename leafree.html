@@ -219,6 +219,7 @@ var drag = d3.drag()
         d.hasMoved = true;
         var deltaX = d3.event.dx; 
         var deltaY = d3.event.dy;
+        console.log("drag", deltaX, deltaY);
         d.descendants().forEach(function(node) {
             node.hasMoved = true;
             // 横型ツリーに合わせた座標更新（xに縦移動、yに横移動を加算）
@@ -237,7 +238,7 @@ var drag = d3.drag()
         g.selectAll(".link")
             .attr("d", function(l) {
                 if (!l || !l.source || !l.target) return null;
-                var rectW = l.source.rectW?d.rectW:node_size_x;
+                var rectW = l.source.rectW?l.source.rectW:node_size_x;
                 var sourceY = l.source.data.customY !== undefined ? l.source.data.customY + rectW : l.source.y + rectW; 
                 var sourceX = l.source.data.customX !== undefined ? l.source.data.customX : l.source.x;
                 var targetY = l.target.data.customY !== undefined ? l.target.data.customY : l.target.y;
@@ -250,25 +251,31 @@ var drag = d3.drag()
                     target: { yPos: targetY, xPos: targetX }
                 });
             });
-        g.selectAll(".ref-link")
-            .attr("d", function(l) {
-                if (!l || !l.source || !l.target) return null;
-                var rectW = l.source.rectW?d.rectW:node_size_x;
+        g.selectAll(".relation")
+            .attr("x1", function(l) {
+                var sx = l[0].data.customY !== undefined ? l[0].data.customY : l[0].y;
+                var w  = l[0].data.rectW || node_size_x;
+                console.log("x1", sx +w/2);
+                return sx + w / 2;
             })
-            .attr("x1", function(d) {return (d.parent.rectW?d.parent.rectW:node_size_x)/2;})
-            .attr("y1", function(d) {return (d.parent.rectH?d.parent.rectH:node_size_y)/2;})
-            .attr("y2", function(target) {
-                // target.ref がリンク先、target.parent が元のノード
-                return target.ref.x - target.parent.x /*+ target.ref.rctW/2 - target.parent.rectW/2*/;
+            .attr("y1", function(l) {
+                var sy = l[0].data.customX !== undefined ? l[0].data.customX : l[0].x;
+                var h  = l[0].data.rectH || node_size_y;
+                console.log("y1", sy +h/2);
+                return sy + h / 2;
             })
-            .attr("x2", function(target) {
-                return target.ref.y - target.parent.y;
+            .attr("x2", function(l) {
+                var tx = l[1].data.customY !== undefined ? l[1].data.customY : l[1].y;
+                var w  = l[1].data.rectW || node_size_x;
+                return tx; // - l[0].y
             })
-            .attr("stroke", "#222")
-            .attr("stroke-width", 1)
-            .attr("stroke-dasharray", "1 1")
-            .attr("marker-end", "url(#arrow)");
-    })
+            .attr("y2", function(l) {
+                var ty = l[1].data.customX !== undefined ? l[1].data.customX : l[1].x;
+                var h  = l[1].data.rectH || node_size_y;
+                return ty+ h / 2; // -l[0].x 
+            })
+            ;
+            })
     .on("end", function(d) {
         var self = d3.select(this)
             .classed('dragging', false)
@@ -290,9 +297,6 @@ var drag = d3.drag()
             var isTargetDescendant = d.descendants().includes(targetData);
 
             if (!isTargetDescendant) {
-
-                // TODO 計算データの修正処理
-
                 // --- 1. 元の親から自分を削除 ---
                 console.log("BBBB");
                 if (d.parent) {
@@ -315,8 +319,6 @@ var drag = d3.drag()
                 
                 d.parent = targetData; 
                 changeParent(d, targetData);
-
-                // TODO data_relation を更新
                 create_relation();
 
                 isDroppedOnNode = true; 
@@ -403,10 +405,10 @@ function update(root, data_relation) {
     var link = g.selectAll(".link")
         .data(root.links(), function(d) { return d.target.id; });
     var relation = g.selectAll('.relation')
-        .data(data_relation);
+        .data(data_relation, function(d) { return d[0].id + "-" + d[1].id;});
 
     // console.log("node", node);
-
+    console.log("relation", relation);
 
     var nodeEnter = node
         .enter()
@@ -416,32 +418,88 @@ function update(root, data_relation) {
         .call(drag)
         ;
 
-    
+        // 1. relationのデータバインド（バグを防ぐため明示的に文字列を返す）
+    var relation = g.selectAll('.relation')
+        .data(data_relation, function(d) { 
+            return d[0].id + "-" + d[1].id; 
+        });
+
+    // 2. enter, update, exit の一括処理（.joinを使用）
+    var relationLines = relation.join(
+        enter => {
+            // 新しく追加されたリレーション（線）
+            return enter.append("line")
+                .attr("class", "relation")
+                .attr("stroke", "#222") // リレーションとリンクを区別する色
+                .attr("stroke-width", 1)
+                .attr("stroke-dasharray", "1 1")
+                .attr("marker-end", "url(#arrow)"); // 終点に矢印を付与
+        },
+        update => update, // 既存の線はそのままキープ
+        exit => exit.remove() // 消えたリレーションは削除
+    );
+
+    // 3. 全リレーション（新規 + 既存）の座標を最新ノード位置（x, y）に更新
+    // TODO x2,2の調整
+    relationLines
+        .attr("x1", function(d) { return d[0].y + (d[0].rectW?d[0].rectW:node_size_x)/2; })
+        .attr("y1", function(d) { return d[0].x; })
+        .attr("x2", function(d) { return d[1].y; })
+        .attr("y2", function(d) { return d[1].x; });
+
+    // console.log("before relEnter");
+    // var relEnter = relation
+    //     .enter()
+    //     .append("g")
+    //     .attr("class", "ref-link")
+    //     .attr("transform", function(d) {
+    //         return "translate(" + d[0].y + "," + d[0].x + ")"})
+    //     ;
+    // console.log("after relEnter", relEnter);
+
     // console.log("after nodeEnter root", root);
 
-    var ref_link = nodeEnter.selectAll(".ref-link")
-        .data(function(d) { 
-            // var refArray = d.link_ref_set ? Array.from(d.link_ref_set) : [];
-            var refArray = d.link_src_set ? Array.from(d.link_src_set) : [];
-            return refArray.map(function(ref) {
-                return { ref: ref, parent: d };
-            });
-        })
-        .enter().append("line")
-        .attr("class", "ref-link")
-        .attr("x1", function(d) {return (d.parent.rectW?d.parent.rectW:node_size_x)/2;})
-        .attr("y1", function(d) {return (d.parent.rectH?d.parent.rectH:node_size_y)/2;})
-        .attr("y2", function(target) {
-            // target.ref がリンク先、target.parent が元のノード
-            return target.ref.x - target.parent.x /*+ target.ref.rctW/2 - target.parent.rectW/2*/;
-        })
-        .attr("x2", function(target) {
-            return target.ref.y - target.parent.y;
-        })
-        .attr("stroke", "#222")
-        .attr("stroke-width", 1)
-        .attr("stroke-dasharray", "1 1")
-        .attr("marker-end", "url(#arrow)");
+            // TODO 常にEnterになる
+
+    // var ref_link = relEnter.append("line")
+    //     .attr("x1", function(d) {console.log("relEnter", d); return (d[0].rectW?d[0].rectW:node_size_x)/2;})
+    //     .attr("y1", function(d) {return (d[0].rectH?d[0].rectH:node_size_y)/2;})
+    //     .attr("y2", function(d) {
+    //         // target.ref がリンク先、target.parent が元のノード
+    //         return d[1].x - d[0].x /*+ target.ref.rctW/2 - target.parent.rectW/2*/;
+    //     })
+    //     .attr("x2", function(d) {
+    //         return d[1].y - d[0].y;
+    //     })
+    //     .attr("stroke", "#222")
+    //     .attr("stroke-width", 1)
+    //     .attr("stroke-dasharray", "1 1")
+    //     .attr("marker-end", "url(#arrow)");
+    // console.log("after reflink");
+
+    // var ref_link = nodeEnter.selectAll(".ref-link")
+    //     .data(function(d) { 
+    //         // var refArray = d.link_ref_set ? Array.from(d.link_ref_set) : [];
+    //         var refArray = d.link_src_set ? Array.from(d.link_src_set) : [];
+    //         return refArray.map(function(ref) {
+    //             return { ref: ref, parent: d };
+    //         });
+    //     })
+    //     .enter().append("line")
+    //     .attr("class", "ref-link")
+    //     .attr("x1", function(d) {return (d.parent.rectW?d.parent.rectW:node_size_x)/2;})
+    //     .attr("y1", function(d) {return (d.parent.rectH?d.parent.rectH:node_size_y)/2;})
+    //     .attr("y2", function(target) {
+    //         // target.ref がリンク先、target.parent が元のノード
+    //         return target.ref.x - target.parent.x /*+ target.ref.rctW/2 - target.parent.rectW/2*/;
+    //     })
+    //     .attr("x2", function(target) {
+    //         return target.ref.y - target.parent.y;
+    //     })
+    //     .attr("stroke", "#222")
+    //     .attr("stroke-width", 1)
+    //     .attr("stroke-dasharray", "1 1")
+    //     .attr("marker-end", "url(#arrow)");
 
     var node_rect = nodeEnter.append("rect")
         .attr("width", function(d) { return d.rectW?d.rectW:node_size_x; })
@@ -481,36 +539,59 @@ function update(root, data_relation) {
 
     
     var nodeUpdate = nodeEnter.merge(node);
+    // var relUpdate = relEnter.merge(relation);
     var duration = 500;
+    console.log("after merge");
 
     nodeUpdate.transition()
         .duration(duration)
         .attr("transform", function(d) { return "translate(" + d.y + "," + d.x + ")"; })
         // .call(drag)
         ;
+    // relUpdate.transition()
+    //     .duration(duration)
+    //     .attr("transform", function(d) { return "translate(" + d[0].y + "," + d[0].x + ")"; })
+    //     ;
+    // console.log("after transition");
 
-    
-    nodeUpdate.selectAll(".ref-link")
-        // .data(function(d) { 
-        //     var refArray = d.link_src_set ? Array.from(d.link_src_set) : [];
-        //     return refArray.map(function(ref) {
-        //         return { ref: ref, parent: d };
-        //     });
-        // })
-        .enter().append("line")
-        .attr("class", "ref-link")
-        .attr("x1", function(d) {return (d.rectW?d.rectW:node_size_x)/2;})
-        .attr("y1", function(d) {return (d.rectH?d.rectH:node_size_y)/2;})
-        .attr("y2", function(target) {
-            return target.ref.x - target.parent.x /*+ target.ref.rctW/2 - target.parent.rectW/2*/;
-        })
-        .attr("x2", function(target) {
-            return target.ref.y - target.parent.y;
-        })
-        .attr("stroke", "#222")
-        .attr("stroke-width", 1)
-        .attr("stroke-dasharray", "1 1")
-        .attr("marker-end", "url(#arrow)");
+    // relUpdate.selectAll(".ref-link")
+    //     .enter().append("line")
+    //     .attr("class", "ref-link")
+    //     .attr("x1", function(d) {console.log("relUpdate", d); return (d[0].rectW?d[0].rectW:node_size_x)/2;})
+    //     .attr("y1", function(d) {return (d[0].rectH?d[0].rectH:node_size_y)/2;})
+    //     .attr("y2", function(d) {
+    //         return d[1].x - d[0].x /*+ target.ref.rctW/2 - target.parent.rectW/2*/;
+    //     })
+    //     .attr("x2", function(d) {
+    //         return d[1].y - d[0].y;
+    //     })
+    //     .attr("stroke", "#222")
+    //     .attr("stroke-width", 1)
+    //     .attr("stroke-dasharray", "1 1")
+    //     .attr("marker-end", "url(#arrow)");
+    // console.log("before relUpdate");
+
+    // nodeUpdate.selectAll(".ref-link")
+    //     // .data(function(d) { 
+    //     //     var refArray = d.link_src_set ? Array.from(d.link_src_set) : [];
+    //     //     return refArray.map(function(ref) {
+    //     //         return { ref: ref, parent: d };
+    //     //     });
+    //     // })
+    //     .enter().append("line")
+    //     .attr("class", "ref-link")
+    //     .attr("x1", function(d) {return (d.rectW?d.rectW:node_size_x)/2;})
+    //     .attr("y1", function(d) {return (d.rectH?d.rectH:node_size_y)/2;})
+    //     .attr("y2", function(target) {
+    //         return target.ref.x - target.parent.x /*+ target.ref.rctW/2 - target.parent.rectW/2*/;
+    //     })
+    //     .attr("x2", function(target) {
+    //         return target.ref.y - target.parent.y;
+    //     })
+    //     .attr("stroke", "#222")
+    //     .attr("stroke-width", 1)
+    //     .attr("stroke-dasharray", "1 1")
+    //     .attr("marker-end", "url(#arrow)");
 
     nodeUpdate.select("rect")
         .attr("width", function(d) { return d.rectW?d.rectW:node_size_x; })
@@ -544,9 +625,17 @@ function update(root, data_relation) {
         .duration(duration)
         .attr("transform", function(d) { return "translate(" + root.y + "," + root.x + ")"; })
         .remove();
+    // var relExit = relation
+    //     .exit()
+    //     .transition()
+    //     .duration(duration)
+    //     .attr("transform", function(d) { return "translate(" + d[0].y + "," + d[0].x + ")"; })
+    //     .remove();
+    // console.log("after relExit");
 
-    nodeExit.select(".ref-link")
-        .style("fill-opacity", 1e-6);
+
+    // relExit.select(".ref-link")
+    //     .style("fill-opacity", function(d) { console.log("relExit", d); return 1e-6;});
     nodeExit.select("rect")
         .style("fill-opacity", function(d) { console.log("nodeExit", d); return 1e-6;});
     nodeExit.select(".node-name")
@@ -555,6 +644,7 @@ function update(root, data_relation) {
         .style("fill-opacity", 1e-6);
     nodeExit.select(".node-expr")
         .style("fill-opacity", 1e-6);
+    console.log("before relExit select");
 
 
     var linkEnter = link.enter().insert('path', "g")
@@ -622,6 +712,7 @@ function update(root, data_relation) {
             .target(function(d) { return [target.y, target.x]; })
         )
         .remove();
+    console.log("before update");
 
 
 }
