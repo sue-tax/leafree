@@ -7,7 +7,7 @@ function checkNodeName(root) {
   // まずは単純に重複がなければ、ＯＫ
   const allNodes = root.descendants();
   const uniqueNames = new Set(allNodes.map(node => node.data.name));
-  console.log(uniqueNames);
+//   console.log(uniqueNames);
   const flagAllUnique = uniqueNames.size === allNodes.length;
   if (flagAllUnique) {
     return null;
@@ -72,7 +72,7 @@ function findNodeFromHere(startNode, targetName) {
     if (allTargetNodes.length === 1) {
         return allTargetNodes[0]; 
     }
-    console.log(targetName, allTargetNodes.length);
+    // console.log(targetName, allTargetNodes.length);
 
     const nodes = startNode.descendants();
     let depth = startNode.depth + 1;
@@ -87,7 +87,7 @@ function findNodeFromHere(startNode, targetName) {
         }
         depth += 1;
     } while(children.length > 0);
-    console.log("子孫になし");
+    // console.log("子孫になし");
 
     let parentNode = startNode.parent;
     while (parentNode !== null) {
@@ -97,11 +97,11 @@ function findNodeFromHere(startNode, targetName) {
         const nodes = parentNode.descendants();
         let depth = parentNode.depth + 1;
         do {
-            console.log("depth", depth);
+            // console.log("depth", depth);
             var children = nodes.filter((node) => node.depth === depth);
-            console.log("children", children);
+            // console.log("children", children);
             const founds =  children.filter((node) => node.data.name === targetName);
-            console.log("founds", founds);
+            // console.log("founds", founds);
             if (founds.length === 1) {
                 return founds[0];
             }
@@ -156,7 +156,7 @@ function calcEachNode(node) {
     if (node.data.disp && node.data.disp !== null) {
         return;
     }
-    //TODO link_src_set clear
+    node.link_src_set.clear();
     const expr = node.data.expr;
     if (typeof expr !== "string" || ! expr.startsWith("=")) {
         node.data.value = expr;
@@ -207,14 +207,15 @@ function calcEachNode(node) {
     if (node.data.format) {
         node.data.disp = d3.format(node.data.format)(node.data.value);
     } else {
+        // console.log("calcEachNode", node.data.name, node.data.value);
         if (Number.isInteger(node.data.value)) {
-            // node.data.disp = formatComma(node.data.value);
             node.data.disp = d3.format(",")(node.data.value);
         } else if (typeof node.data.value === 'number' ) {
             node.data.disp = d3.format(",.2f")(node.data.value);
         } else {
             node.data.disp = node.data.value;
         }
+        // console.log(node.data.disp);
     }
     return;
 }
@@ -284,6 +285,143 @@ function renameNodeName(node, new_name) {
             calcEachNode(d);
         });
   }
+
+
+//ノード名、式を変更する
+//変更したいない場合もある
+function rename_reexpr_Node(node, new_name, new_expr ) {
+    if (node.data.expr === new_expr) {
+        if (node.data.name === new_name) {
+            return false;
+        }
+        const rv = renameNodeName(node, new_name);
+        return rv;
+    }
+    const rootNode = node.ancestors ? node.ancestors().pop() : node;
+    if (node.data.name === new_name) {
+        //式のみの変更
+        node.data.expr = new_expr;
+        node.data.value = null;
+        node.data.disp = null;
+        if (node.link_ref_set.size !== 0) {
+            rootNode.descendants()
+                    .filter(d => node.link_ref_set.has(d))
+                    .forEach(d => {
+                        clear_ref(d);
+                        d.link_src_set.clear();
+                    });
+            node.link_ref_set.clear();
+        }
+    } else {
+        //両方の変更
+        const old_name = node.data.name;
+        const parent_node = node.parent;
+        const check_name = parent_node.children.find(child =>
+                child.data.name === new_name);
+        if (check_name !== undefined) {
+            alert(`ノード名「${new_name}」は重複しています。`);
+            return false;
+        }
+        node.data.name = new_name;
+
+        node.data.expr = new_expr;
+        node.data.value = null;
+        node.data.disp = null;
+
+        // 以下のノードのvalueをクリアしてから、再計算
+        //  エラーノード
+        // 　このノードを参照しているノード、さらにそのノードを参照しているノード
+        // 　新ノード名と同一のノード名のノードを参照しているノード、さらに……
+
+        // 参照先のノードがなくてエラーや、重複ノードでエラーになっていた
+        // ノードがエラーでなくなるかもしれない
+        rootNode.descendants()
+            .filter(d => (!d.data.value ||
+                    (typeof d.data.value === "string") && (d.data.value.startsWith("#"))))
+            .forEach(d => {
+                d.data.disp = null;
+                d.data.value = null;
+            });
+
+        // ノード名が変わるの参照先でなくなる
+        // 別のノードが参照先になることが考えられる
+        console.log(node.link_ref_set);
+        if (node.link_ref_set.size !== 0) {
+            rootNode.descendants()
+                    .filter(d => node.link_ref_set.has(d))
+                    .forEach(d => {
+                        clear_ref(d);
+                        d.link_src_set.clear();
+                    });
+            node.link_ref_set.clear();
+        }
+
+        const sameNodes = rootNode.descendants()
+            .filter(d => d.data.name == new_name)
+            .forEach(d => {
+                clear_ref(d);
+                d.link_src_set.clear();
+            });
+    }
+
+    rootNode.descendants()
+        .filter(d => (!d.data.value || d.data.value === null))
+        .forEach(d => {
+            calcEachNode(d);
+        });
+    return true;
+  }
+
+
+//新しいノードを作る
+//TODO rootの子を作る
+function new_Node(node, new_name, new_expr ) {
+    const rootNode = node.ancestors ? node.ancestors().pop() : node;
+    const parent_node = node.parent;
+    console.log(node);
+    console.log(parent_node);
+    // const check_name = parent_node.children.find(child =>
+    //         child.data.name === new_name);
+    // if (check_name !== undefined) {
+    //     alert(`ノード名「${new_name}」は重複しています。`);
+    //     return false;
+    // }
+    
+    console.log(node.data);
+    node.data.name = new_name;
+    node.data.expr = new_expr;
+    node.data.value = null;
+    node.data.disp = null;
+
+    // 以下のノードのvalueをクリアしてから、再計算
+    //  エラーノード
+    // 　このノードを参照しているノード、さらにそのノードを参照しているノード
+    // 　新ノード名と同一のノード名のノードを参照しているノード、さらに……
+
+    // 参照先のノードがなくてエラーや、重複ノードでエラーになっていた
+    // ノードがエラーでなくなるかもしれない
+    rootNode.descendants()
+        .filter(d => (!d.data.value ||
+                (typeof d.data.value === "string") && (d.data.value.startsWith("#"))))
+        .forEach(d => {
+            d.data.disp = null;
+            d.data.value = null;
+        });
+
+    const sameNodes = rootNode.descendants()
+        .filter(d => d.data.name == new_name)
+        .forEach(d => {
+            clear_ref(d);
+            d.link_src_set.clear();
+        });
+    rootNode.descendants()
+        .filter(d => (!d.data.value || d.data.value === null))
+        .forEach(d => {
+            calcEachNode(d);
+        });
+    return true;
+  }
+
 
 
 //そのノードとそのノードを参照しているノード、さらに…ノードの

@@ -65,6 +65,12 @@
 
 //Go Liveを使わない
 
+let activeExprInput = null;
+let editingNodeId = null;
+
+let nodeCounter = 0;
+
+
 const node_size_x = 60;
 const node_size_y = 14;
 
@@ -129,12 +135,12 @@ var data_tree = {
     ]
 };
 
-
 var data_relation_set = new Set();
 var data_relation = [];
 
 
 var root = d3.hierarchy(data_tree);
+
 const result = checkNodeName(root);
 if (result !== null) {
     alert(`ノード名「${result}」は重複しています。`);
@@ -146,10 +152,18 @@ if (result !== null) {
     // exit(-1);
     // return -1;
 }
+root.descendants()
+    .forEach(d => {d.id = ++nodeCounter; d.data.id = d.id;})
 calcAll(root);
+setNode(root);
 create_relation();
 
-treeLayout = d3.tree().nodeSize([node_size_x, node_size_y]);
+// treeLayout = d3.tree().nodeSize([node_size_x, node_size_y * 3]);
+treeLayout = d3.tree()
+    .nodeSize([node_size_y * 12, node_size_x])
+    .separation(function(a, b) {
+        return a.parent === b.parent ? 5 : 4;
+    })
 treeLayout(root);
 const svg = d3.select("svg");
 
@@ -191,6 +205,21 @@ defs.append("marker")
 const g = svg.append("g")
 //     .attr("transform", `translate(${margin.left - xExtent[0]}, ${margin.top})`);
     // .attr("transform", `translate(${margin.left - yExtent[0]}, ${margin.top})`);
+
+svg.insert("rect", ":first-child")
+    .attr("class", "bg-hit")
+    .attr("x", -100000)
+    .attr("y", -100000)
+    .attr("width", 200000)
+    .attr("height", 200000)
+    .style("fill", "transparent")
+    .style("pointer-events", "all")
+    .on("dblclick", function() {
+        d3.event.stopPropagation();
+
+        const p = d3.mouse(g.node());
+        openNewRootChildEditor(p[0], p[1]);
+    });
 
 var tree = d3.tree().size([svgHeight, svgWidth-200]); //縦、横
 // var tree = d3.tree().size([svgWidth, svgHeight]);
@@ -304,8 +333,8 @@ var drag = d3.drag()
                 // console.log("BBBB");
                 if (d.parent) {
                     if (d.parent.data && d.parent.data.children) {
-                    var pIdx = d.parent.data.children.indexOf(d.data);
-                    if (pIdx > -1) d.parent.data.children.splice(pIdx, 1);
+                        var pIdx = d.parent.data.children.indexOf(d.data);
+                        if (pIdx > -1) d.parent.data.children.splice(pIdx, 1);
                     }
                     var index = d.parent.children.indexOf(d);
                     if (index > -1) d.parent.children.splice(index, 1);
@@ -394,6 +423,7 @@ d3.select("#save-btn").on("click", async function() {
 d3.select("#load-btn").on("click", async function() {
     const data = await loadFileToData();
     if (data) {
+        nodeCounter = 0;
         console.log("load data", data);
         g.selectAll("*").remove();
         data_tree = data;
@@ -410,8 +440,13 @@ d3.select("#load-btn").on("click", async function() {
             };
             root = d3.hierarchy(data_tree);
         }
+        //ロードした際のidは無視
+        root.descendants()
+            .forEach(d => {d.id = ++nodeCounter; d.data.id = d.id;})
+
         calcAll(root);
         console.log("after calcAll", root);
+        setNode(root);
         data_relation = [];
         create_relation();
         // console.log(data_relation);
@@ -469,7 +504,7 @@ window.addEventListener("beforeunload", function() {
     console.log("page unload");
 });
 
-var node_id = 0;
+// var node_id = 0;
 update(root, data_relation);
 
 
@@ -554,6 +589,42 @@ function update(root, data_relation) {
         .style("stroke", "#111")
         .style("stroke-width", "1px")
         ;
+    nodeEnter
+        .on("dblclick", function(d) {
+            d3.event.stopPropagation();
+            if (!d3.event.shiftKey) {
+                openNodeEditor(d);
+                return;
+            }
+            openNewChildEditor(d);
+        });
+    nodeEnter.on("click", function(clickedNode) {
+        if (!activeExprInput) return;
+        if (editingNodeId === clickedNode.id) return;
+
+        console.log("click");
+
+        d3.event.stopPropagation();
+
+        console.log(clickedNode);
+        const insertText = clickedNode.data.name;
+        const input = activeExprInput;
+
+        const start = input.selectionStart ?? input.value.length;
+        const end = input.selectionEnd ?? input.value.length;
+
+        input.value =
+            input.value.slice(0, start) +
+            "'" + insertText + "'" +
+            input.value.slice(end);
+
+        console.log(input.value);
+
+        const newPos = start + insertText.length + 2;
+        input.focus();
+        input.setSelectionRange(newPos, newPos);
+    });
+
     nodeEnter.append("text")
         .attr("class", "node-name")
         .attr("x", 0)
@@ -563,7 +634,7 @@ function update(root, data_relation) {
         .style("fill-opacity", 1e-6);
     nodeEnter.append("text")
         .attr("class", "node-disp")
-        .attr("x", function(d) { return d.rectW?d.rectW:node_size_x; })
+        .attr("x", function(d) { return d.rectW; /*?d.rectW:node_size_x;*/ })
         // ★ 右詰め（テキストの末尾がX座標に揃う）にする
         .attr("text-anchor", "end")
         // ★ 右端にぴったりくっつきすぎるのを防ぐため、内側に少しマージン（例: 5px）を入れる
@@ -593,7 +664,7 @@ function update(root, data_relation) {
         // .call(drag)
         ;
 
-        nodeUpdate.select("rect")
+    nodeUpdate.select("rect")
         .attr("width", function(d) { return d.rectW?d.rectW:node_size_x; })
         .attr("height", function(d) { return d.rectH?d.rectH:node_size_y; })
         .attr("x", 0)       // 左端を揃える
@@ -605,15 +676,18 @@ function update(root, data_relation) {
     nodeUpdate.select(".node-name")
         .transition()
         .duration(duration)
+        .text(function(d) { return d.data.name;})
         .style("fill-opacity", 1);
     nodeUpdate.select(".node-disp")
         .transition()
         .duration(duration)
+        .attr("x", function(d) { return d.rectW; /*?d.rectW:node_size_x;*/ })
         .text(function(d) { return d.data.disp; })
         .style("fill-opacity", 1);
     nodeUpdate.select(".node-expr")
         .transition()
         .duration(duration)
+        .text(function(d) { return d.data.expr; })
         .style("fill-opacity", 1);
 
     nodeUpdate.call(drag);
@@ -707,6 +781,325 @@ function update(root, data_relation) {
 
 }
 
+function openNewChildEditor(parentNode) {
+    g.selectAll(".node-editor").remove();
+    activeExprInput = null;
+    editingNodeId = null;
+
+    const w = 220;
+    const h = 90;
+
+    const px = nodePosX(parentNode) + 80;
+    const py = nodePosY(parentNode) - h / 2;
+
+    const editor = g.append("foreignObject")
+        .attr("class", "node-editor")
+        .attr("x", px)
+        .attr("y", py)
+        .attr("width", w)
+        .attr("height", h);
+
+    const box = editor.append("xhtml:div")
+        .style("width", w + "px")
+        .style("height", h + "px")
+        .style("background", "#fff")
+        .style("border", "1px solid #666")
+        .style("border-radius", "4px")
+        .style("padding", "6px")
+        .style("box-sizing", "border-box")
+        .style("font", "12px sans-serif");
+
+    box.append("xhtml:input")
+        .attr("class", "new-name")
+        .attr("type", "text")
+        .attr("placeholder", "node name")
+        .style("width", "100%")
+        .style("box-sizing", "border-box");
+
+    box.append("xhtml:input")
+        .attr("class", "new-expr")
+        .attr("type", "text")
+        .attr("placeholder", "expr")
+        .style("width", "100%")
+        .style("margin-top", "4px")
+        .style("box-sizing", "border-box")
+        .each(function() {
+            activeExprInput = this;
+        });
+
+
+    const row = box.append("xhtml:div")
+        .style("margin-top", "6px")
+        .style("text-align", "right");
+
+    row.append("xhtml:button")
+        .text("OK")
+        .on("click", function() {
+            const el = editor.node();
+            const name = el.querySelector(".new-name").value.trim();
+            const expr = el.querySelector(".new-expr").value.trim();
+
+            if (!name) return;
+
+            addChildNode(parentNode, name, expr);
+            g.selectAll(".node-editor").remove();
+        });
+
+    row.append("xhtml:button")
+        .text("Cancel")
+        .style("margin-left", "4px")
+        .on("click", function() {
+            g.selectAll(".node-editor").remove();
+        });
+
+    setTimeout(function() {
+        const input = editor.node().querySelector(".new-name");
+        if (input) input.focus();
+    }, 0);
+}
+
+function addChildNode(parentNode, name, expr) {
+    console.log("addChildNode", parentNode);
+    if (!parentNode.data.children) {
+        parentNode.data.children = [];
+    } else {
+        const flag = parentNode.data.children.
+            find(d => { return d.name === name});
+        if (flag) {
+            alert("ノード名が重複しています");
+            return;
+        } 
+    }
+    let set_expr = expr;
+    if (typeof expr === "string") {
+        if (expr.trim() !== "") {
+            if (Number.isFinite(Number(expr))) {
+                set_expr = Number(expr);
+            }
+        }
+    }
+    console.log("set_expr", set_expr);
+    console.log(typeof set_expr);
+    newData = {
+        name: name,
+        expr: set_expr,
+        children: []
+        ,id: ++nodeCounter
+    };
+
+    parentNode.data.children.push(newData);
+    const parentID = parentNode.id;
+    root = d3.hierarchy(root.data);
+    root.descendants()
+        .forEach(d => {d.id = d.data.id;})
+    const newParentNode = root.descendants().find( function(node) { return node.id === parentID; });
+    const newNode = newParentNode.children.find( function(node) { return node.data.name === name; });
+    setNode(root);
+    new_Node(newNode, name, set_expr);
+    data_relation = [];
+    create_relation();
+    update(root, data_relation);
+}
+
+function openNewRootChildEditor(posX, posY) {
+    g.selectAll(".node-editor").remove();
+    activeExprInput = null;
+    editingNodeId = null;
+
+    const w = 220;
+    const h = 90;
+
+    const editor = g.append("foreignObject")
+        .attr("class", "node-editor")
+        .attr("x", posX)
+        .attr("y", posY - h / 2)
+        .attr("width", w)
+        .attr("height", h);
+
+    const box = editor.append("xhtml:div")
+        .style("width", w + "px")
+        .style("height", h + "px")
+        .style("background", "#fff")
+        .style("border", "1px solid #666")
+        .style("border-radius", "4px")
+        .style("padding", "6px")
+        .style("box-sizing", "border-box")
+        .style("font", "12px sans-serif");
+
+    box.append("xhtml:input")
+        .attr("class", "new-name")
+        .attr("type", "text")
+        .attr("placeholder", "node name")
+        .style("width", "100%")
+        .style("box-sizing", "border-box");
+
+    box.append("xhtml:input")
+        .attr("class", "new-expr")
+        .attr("type", "text")
+        .attr("placeholder", "expr")
+        .style("width", "100%")
+        .style("margin-top", "4px")
+        .style("box-sizing", "border-box")
+        .each(function() {
+            activeExprInput = this;
+        });
+
+    const row = box.append("xhtml:div")
+        .style("margin-top", "6px")
+        .style("text-align", "right");
+
+    row.append("xhtml:button")
+        .text("OK")
+        .on("click", function() {
+            const el = editor.node();
+            const name = el.querySelector(".new-name").value.trim();
+            const expr = el.querySelector(".new-expr").value.trim();
+
+            if (!name) return;
+            let set_expr = expr;
+            if (typeof expr === "string") {
+                if (expr.trim() !== "") {
+                    if (Number.isFinite(Number(expr))) {
+                        set_expr = Number(expr);
+                    }
+                }
+            }
+
+            addChildToRootAtPosition(name, set_expr, posX, posY);
+            g.selectAll(".node-editor").remove();
+        });
+
+    row.append("xhtml:button")
+        .text("Cancel")
+        .style("margin-left", "4px")
+        .on("click", function() {
+            g.selectAll(".node-editor").remove();
+        });
+
+    setTimeout(function() {
+        const input = editor.node().querySelector(".new-name");
+        if (input) input.focus();
+    }, 0);
+}
+
+function addChildToRootAtPosition(name, expr, posX, posY) {
+    if (!root.data.children) {
+        root.data.children = [];
+    } else {
+        const flag = root.data.children.
+            find(d => { return d.name === name});
+        if (flag) {
+            alert("ノード名が重複しています");
+            return;
+        } 
+    }
+    let set_expr = expr;
+    if (typeof expr === "string") {
+        if (expr.trim() !== "") {
+            if (Number.isFinite(Number(expr))) {
+                set_expr = Number(expr);
+            }
+        }
+    }
+    console.log("set_expr", set_expr);
+    console.log(typeof set_expr);
+
+    const newData = {
+        name: name,
+        expr: set_expr,
+        children: [],
+        id: ++nodeCounter,
+        customX: posY,
+        customY: posX
+    };
+
+    root.data.children.push(newData);
+    const rootID = root.id;
+    root = d3.hierarchy(root.data);
+    root.descendants()
+        .forEach(d => {d.id = d.data.id;})
+    // const newParentNode = root.descendants().find( function(node) { return node.id === parentID; });
+    const newNode = root.children.find( function(node) { return node.data.name === name; });
+    setNode(root);
+
+    new_Node(newNode, name, set_expr);
+    setNode(root);
+    data_relation = [];
+    create_relation();
+    update(root, data_relation);
+}
+
+
+function openNodeEditor(d) {
+    g.selectAll(".node-editor").remove();
+    activeExprInput = null;
+    editingNodeId = d.id;
+
+    const w = Math.max(d.rectW ? d.rectW : node_size_x, 180);
+    const h = 70;
+    const x = nodePosX(d);
+    const y = nodePosY(d) - h / 2;
+
+    const editor = g.append("foreignObject")
+        .attr("class", "node-editor")
+        .attr("x", x)
+        .attr("y", y)
+        .attr("width", w)
+        .attr("height", h);
+
+    const box = editor.append("xhtml:div")
+        .style("width", w + "px")
+        .style("height", h + "px")
+        .style("background", "#fff")
+        .style("border", "1px solid #666")
+        .style("padding", "4px")
+        .style("box-sizing", "border-box");
+
+    box.append("xhtml:input")
+        .attr("class", "edit-name")
+        .style("width", "100%")
+        .property("value", d.data.name || "");
+
+    box.append("xhtml:input")
+        .attr("class", "edit-expr")
+        .style("width", "100%")
+        .style("margin-top", "4px")
+        .property("value", d.data.expr || "")
+        .each(function() {
+            activeExprInput = this;
+        });
+
+    box.append("xhtml:button")
+        .text("OK")
+        .on("click", function() {
+            const el = editor.node();
+            const new_name = el.querySelector(".edit-name").value;
+            const new_expr = el.querySelector(".edit-expr").value;
+            let set_expr = new_expr;
+            if (typeof new_expr === "string") {
+                if (new_expr.trim() !== "") {
+                    if (Number.isFinite(Number(new_expr))) {
+                        set_expr = Number(new_expr);
+                    }
+                }
+            }
+
+            const rv = rename_reexpr_Node(d, new_name, set_expr ) 
+            if (! rv) {
+                return;
+            }            
+            // calcAll(root);
+            setNode(root);
+            data_relation = [];
+            create_relation();
+            update(root, data_relation);
+
+            activeExprInput = null;
+            editingNodeId = null;
+            g.selectAll(".node-editor").remove();
+        });
+}
+
 function resize() {
     const nodes = root.descendants();
     const xExtent = d3.extent(nodes, d => d.data.customX?d.data.customX:d.x); // [最左のx, 最右のx]
@@ -731,10 +1124,12 @@ function create_relation() {
     // console.log(root);
     root.descendants()
         .forEach(d => {
-            d.link_src_set
-                .forEach(link_src => {
-                    data_relation_set.add([d, link_src]);
-                })
+            if (d.link_src_set) {
+                d.link_src_set
+                    .forEach(link_src => {
+                        data_relation_set.add([d, link_src]);
+                    })
+            }
         })
     // console.log(data_relation_set);
     data_relation = Array.from(data_relation_set);
@@ -797,6 +1192,28 @@ async function loadFileToData() {
         console.log('ロードが失敗しました');
         return null;
     }
+}
+
+function setNode(root) {
+    root.descendants()
+        .forEach( d => {
+            if (!d.id) d.id = ++node_id;
+            d.link_ref_set = new Set();
+            d.link_src_set = new Set();
+            // 横幅など？
+            // console.log(d.data.name, d.data.rectW);
+            d.rectW = d.data.rectW ? d.data.rectW : Math.max(getTextWidth(d.data.disp, null), node_size_x) + 5 + 5; 
+            // console.log(d.data.name, d.rectW);
+        })
+}
+
+// --- 2. 文字列の幅（ピクセル数）を正確に測定するヘルパー関数 ---
+function getTextWidth(text, font) {
+    var canvas = document.createElement('canvas');
+    var context = canvas.getContext('2d');
+    context.font = font || '14px sans-serif';
+    var metrics = context.measureText(text);
+    return metrics.width;
 }
 
 function nodePosX(d) {
