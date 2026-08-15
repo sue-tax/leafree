@@ -120,7 +120,7 @@ function findNodeFromHere(startNode, targetName) {
 // 起動時、ロード時
 // exprは必ずある前提、disp,valueは無視
 function calcAll(root) {
-    console.log("calcAll start");
+    // console.log("calcAll start");
     root.descendants()
         .forEach(d => {
             d.link_src_set = new Set();
@@ -131,7 +131,19 @@ function calcAll(root) {
         .filter(d => typeof d.data.expr !== 'string' || ! d.data.expr.startsWith("="))
         .forEach(d => {
             d.data.disp = d.data.expr;
-            d.data.value = d.data.expr;
+            if (d.data.format) {
+                d.data.disp = d3.format(d.data.format)(d.data.value);
+            } else {
+                // console.log("calcEachNode", node.data.name, node.data.value);
+                if (Number.isInteger(d.data.value)) {
+                    d.data.disp = d3.format(",")(d.data.value);
+                } else if (typeof d.data.value === 'number' ) {
+                    d.data.disp = d3.format(",.2f")(d.data.value);
+                } else {
+                    d.data.disp = d.data.value;
+                }
+                // console.log(node.data.disp);
+            }
         });
 
     root.descendants()
@@ -153,9 +165,11 @@ function calcAll(root) {
 // exprを参考に、value,dispを設定する
 // ループエラーに注意
 function calcEachNode(node) {
+    console.log("start calcEachNode", node.data.name);
     if (node.data.disp && node.data.disp !== null) {
         return;
     }
+    console.log(node);
     node.link_src_set.clear();
     const expr = node.data.expr;
     if (typeof expr !== "string" || ! expr.startsWith("=")) {
@@ -229,6 +243,43 @@ function getNodeValue(node) {
   }
   calcEachNode(node);
   return node.data.value;
+}
+
+
+function deleteNode(node) {
+    node.descendants()
+        .forEach(child => clear_ref(child));
+
+    // エラーノード　参照ノード名の重複が解消する可能性がある
+    const rootNode = node.ancestors ? node.ancestors().pop() : node;
+    rootNode.descendants()
+        .filter(d => (!d.data.value ||
+                (typeof d.data.value === "string") && (d.data.value.startsWith("#"))))
+        .forEach(d => {
+            d.data.disp = null;
+            d.data.value = null;
+        });
+
+    if (node.parent.data && node.parent.data.children) {
+        const pIdx = node.parent.data.children.indexOf(node.data);
+        if (pIdx > -1) {
+            node.parent.data.children.splice(pIdx, 1);
+        }
+    }
+    // --- 2. D3ノードデータ構造から削除 ---
+    const index = node.parent.children.indexOf(node);
+    if (index > -1) {
+        node.parent.children.splice(index, 1);
+    }
+    // if (d.parent.children.length === 0) {
+    //     d.parent.children = null;
+    // }
+
+    root.descendants()
+        .filter(d => d.data && (!d.data.value || d.data.value === null))
+        .forEach(d => {
+            calcEachNode(d);
+        });
 }
 
 
@@ -392,6 +443,8 @@ function new_Node(node, new_name, new_expr ) {
     node.data.expr = new_expr;
     node.data.value = null;
     node.data.disp = null;
+    node.link_ref_set = new Set();
+    node.link_src_set = new Set();
 
     // 以下のノードのvalueをクリアしてから、再計算
     //  エラーノード

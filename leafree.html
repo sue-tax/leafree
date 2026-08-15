@@ -49,8 +49,7 @@
             <li id="menu-item-child" style="list-style: none; padding: 8px 16px; cursor: pointer;">子ノード挿入</li>
             <li id="menu-item-copy" style="list-style: none; padding: 8px 16px; cursor: pointer;">コピー</li>
             <li id="menu-item-paste" style="list-style: none; padding: 8px 16px; cursor: pointer;">子としてペースト</li>
-            <li id="menu-item-rename" style="list-style: none; padding: 8px 16px; cursor: pointer;">ノード名変更</li>
-            <li id="menu-item-reexpr" style="list-style: none; padding: 8px 16px; cursor: pointer;">式変更</li>
+            <li id="menu-item-change" style="list-style: none; padding: 8px 16px; cursor: pointer;">名前・式変更</li>
             <li id="menu-item-delete" style="list-style: none; padding: 8px 16px; cursor: pointer;">削除</li>
         </ul>
     </div>
@@ -73,6 +72,19 @@ let nodeCounter = 0;
 
 const node_size_x = 60;
 const node_size_y = 14;
+
+const tooltip = d3.select("body")
+    .append("div")
+    .attr("class", "node-tooltip")
+    .style("position", "absolute")
+    .style("display", "none")
+    .style("padding", "6px 8px")
+    .style("background", "rgba(0,0,0,0.8)")
+    .style("color", "#fff")
+    .style("border-radius", "4px")
+    .style("font", "12px sans-serif")
+    .style("pointer-events", "none")
+    .style("white-space", "pre-line");
 
 const node_menu = d3.select("#context-menu");
 
@@ -101,6 +113,7 @@ const node_menu = d3.select("#context-menu");
 // };
 var data_tree = {
     "name": "root",
+    "memo" : "tooltip memo",
     "children": [
         {
             "name" : "A",
@@ -160,12 +173,20 @@ create_relation();
 
 // treeLayout = d3.tree().nodeSize([node_size_x, node_size_y * 3]);
 treeLayout = d3.tree()
-    .nodeSize([node_size_y * 12, node_size_x])
+    // .nodeSize([node_size_y * 12, node_size_x])
+    .nodeSize([node_size_y * 4, node_size_x])
     .separation(function(a, b) {
-        return a.parent === b.parent ? 5 : 4;
+        // return a.parent === b.parent ? 5 : 4;
+        return a.parent === b.parent ? 2 : 1;
     })
 treeLayout(root);
 const svg = d3.select("svg");
+// d3.select("body").on("click.contextmenu", function() {
+//     menu.style("display", "none");
+// });
+// menu.on("click", function() {
+//     d3.event.stopPropagation();
+// });
 
 resize();
 const nodes = root.descendants();
@@ -360,14 +381,12 @@ var drag = d3.drag()
         // ★ 条件分岐: 他のノードにドロップされた場合のみ「元の位置」に戻す
         //    うまく、機能していないようだ
         if (isDroppedOnNode) {
-            // console.log("CCCC");
-
             d.descendants().forEach(function(node) {
                 var key = node.id; // || node.data.id || JSON.stringify(node.data.name);
                 var original = originCoordinates[key];
                 // console.log(key, original);
                 if (original) {
-                    console.log(node.x, node.y, node.data.customX, node.data.customY);
+                    // console.log(node.x, node.y, node.data.customX, node.data.customY);
                     node.x = original.x;
                     node.y = original.y;
                     // node.data.customX = original.customX;
@@ -427,10 +446,10 @@ d3.select("#load-btn").on("click", async function() {
         console.log("load data", data);
         g.selectAll("*").remove();
         data_tree = data;
-        console.log("before hierarchy", root);
+        // console.log("before hierarchy", root);
         root = null;
         root = d3.hierarchy(data_tree);
-        console.log("after hierarchy", root);
+        // console.log("after hierarchy", root);
         const result = checkNodeName(root);
         if (result !== null) {
             alert(`ノード名「${result}」は重複しています。`);
@@ -445,59 +464,59 @@ d3.select("#load-btn").on("click", async function() {
             .forEach(d => {d.id = ++nodeCounter; d.data.id = d.id;})
 
         calcAll(root);
-        console.log("after calcAll", root);
+        // console.log("after calcAll", root);
         setNode(root);
         data_relation = [];
         create_relation();
         // console.log(data_relation);
         // treeLayout = d3.tree().nodeSize([node_size_x, node_size_y]);
         treeLayout(root);
-        console.log("after treeLayout", root);
-        console.log(
-            root.descendants().map(d => ({
-                name: d.data.name,
-                depth: d.depth,
-                x: d.x,
-                y: d.y,
-                customX : d.data.customX,
-                customY : d.data.customY
-            }))
-            );
+        // console.log("after treeLayout", root);
+        // console.log(
+        //     root.descendants().map(d => ({
+        //         name: d.data.name,
+        //         depth: d.depth,
+        //         x: d.x,
+        //         y: d.y,
+        //         customX : d.data.customX,
+        //         customY : d.data.customY
+        //     }))
+        //     );
         root.descendants()
             .forEach(d => {
-                console.log(d.data.name, d.data.customX, d.data.customY);
-                console.log(d.x, d.y);
+                // console.log(d.data.name, d.data.customX, d.data.customY);
+                // console.log(d.x, d.y);
                 if (d.data.customX !== undefined && d.data.customY !== undefined) {
-                    console.log(d.data.name, d.data.customY);
+                    // console.log(d.data.name, d.data.customY);
                     d.x = d.data.customX;
                     d.y = d.data.customY;
                 }
             });
-        console.log("before resize", root);
-        console.log(
-            root.descendants().map(d => ({
-                name: d.data.name,
-                depth: d.depth,
-                x: d.x,
-                y: d.y,
-                customX : d.data.customX,
-                customY : d.data.customY
-            }))
-            );
+        // console.log("before resize", root);
+        // console.log(
+        //     root.descendants().map(d => ({
+        //         name: d.data.name,
+        //         depth: d.depth,
+        //         x: d.x,
+        //         y: d.y,
+        //         customX : d.data.customX,
+        //         customY : d.data.customY
+        //     }))
+        //     );
         resize();
         // var node_id = 0;
         update(root, data_relation);
-        console.log("after update", root);
-        console.log(
-            root.descendants().map(d => ({
-                name: d.data.name,
-                depth: d.depth,
-                x: d.x,
-                y: d.y,
-                customX : d.data.customX,
-                customY : d.data.customY
-            }))
-            );
+        // console.log("after update", root);
+        // console.log(
+        //     root.descendants().map(d => ({
+        //         name: d.data.name,
+        //         depth: d.depth,
+        //         x: d.x,
+        //         y: d.y,
+        //         customX : d.data.customX,
+        //         customY : d.data.customY
+        //     }))
+        //     );
     }
 });
 window.addEventListener("beforeunload", function() {
@@ -625,6 +644,53 @@ function update(root, data_relation) {
         input.setSelectionRange(newPos, newPos);
     });
 
+    node_rect.on("contextmenu", function(d) {
+        // ブラウザ標準の右クリックメニューをキャンセル
+        d3.event.preventDefault();
+        
+        // イベント座標の取得（D3のバージョンに応じてd3.event、またはグローバルeventを利用）
+        var currentEvent = d3.event || event;
+        
+        node_menu
+            .style("display", "block")
+            .style("left", (currentEvent.pageX + 10) + "px")
+            .style("top", (currentEvent.pageY + 10) + "px");
+        d3.select("body").on("click.contextmenu", function() {
+            node_menu.style("display", "none");
+        });
+        node_menu.on("click", function() {
+            d3.event.stopPropagation();
+        });
+
+        // メニューの各アクションの設定
+        d3.select("#menu-item-child").on("click", function() {
+            parent_node = d;
+            insert_child(parent_node);
+            node_menu.style("display", "none");
+        });
+        d3.select("#menu-item-change").on("click", function() {
+            change_node(d);
+            node_menu.style("display", "none");
+        });
+        // d3.select("#menu-item-reexpr").on("click", function() {
+        //     reexpr_node(d);
+        //     node_menu.style("display", "none");
+        // });
+        // d3.select("#menu-item-copy").on("click", function() {
+        //     copy_node(d);
+        //     node_menu.style("display", "none");
+        // });
+        // d3.select("#menu-item-paste").on("click", function() {
+        //     paste_node(d);
+        //     node_menu.style("display", "none");
+        // });
+        d3.select("#menu-item-delete").on("click", function() {
+            delete_node(d);
+            node_menu.style("display", "none");
+        });
+    });
+
+
     nodeEnter.append("text")
         .attr("class", "node-name")
         .attr("x", 0)
@@ -652,6 +718,22 @@ function update(root, data_relation) {
         .text(function(d) { return d.data.expr; })
         .style("fill-opacity", 1e-6);
 
+    nodeEnter
+        .on("mouseover", function(d) {
+            if (d.data.memo) {
+                tooltip
+                    .style("display", "block")
+                    .html(d.data.memo);
+            }
+        })
+        .on("mousemove", function() {
+            tooltip
+                .style("left", (d3.event.pageX + 12) + "px")
+                .style("top", (d3.event.pageY + 12) + "px");
+        })
+        .on("mouseout", function() {
+            tooltip.style("display", "none");
+        });
     
     var nodeUpdate = nodeEnter.merge(node);
     // var relUpdate = relEnter.merge(relation);
@@ -781,6 +863,33 @@ function update(root, data_relation) {
 
 }
 
+
+function delete_node(node) {
+    const num_child = node.descendants().length - 1;
+    if (num_child !== 0) {
+        message = "子孫ノード " + num_child + " 個含めて削除する(OK)か、削除中止する(キャンセル)か";
+        var result = confirm(message);
+        if (! result) {
+            return;
+        }
+    }
+    if (! node.parent) {
+        alert("ルートノードは削除できません。");
+        return;
+    }
+
+    deleteNode(node);
+
+    data_relation = [];
+    create_relation();
+    update(root, data_relation);
+}
+
+
+function insert_child(parent_node) {
+    openNewChildEditor(parent_node)
+}
+
 function openNewChildEditor(parentNode) {
     g.selectAll(".node-editor").remove();
     activeExprInput = null;
@@ -894,7 +1003,9 @@ function addChildNode(parentNode, name, expr) {
         .forEach(d => {d.id = d.data.id;})
     const newParentNode = root.descendants().find( function(node) { return node.id === parentID; });
     const newNode = newParentNode.children.find( function(node) { return node.data.name === name; });
+    console.log("before setNode");
     setNode(root);
+    console.log("before new_Node");
     new_Node(newNode, name, set_expr);
     data_relation = [];
     create_relation();
@@ -1029,7 +1140,9 @@ function addChildToRootAtPosition(name, expr, posX, posY) {
     update(root, data_relation);
 }
 
-
+function change_node(node) {
+    openNodeEditor(node);
+}
 function openNodeEditor(d) {
     g.selectAll(".node-editor").remove();
     activeExprInput = null;
