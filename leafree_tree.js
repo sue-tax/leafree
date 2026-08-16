@@ -165,16 +165,23 @@ function calcAll(root) {
 // exprを参考に、value,dispを設定する
 // ループエラーに注意
 function calcEachNode(node) {
-    console.log("start calcEachNode", node.data.name);
+    // console.log("start calcEachNode", node.data.name);
     if (node.data.disp && node.data.disp !== null) {
         return;
     }
-    console.log(node);
+    // console.log(node);
     node.link_src_set.clear();
     const expr = node.data.expr;
-    if (typeof expr !== "string" || ! expr.startsWith("=")) {
+    // console.log("expr", "$"+expr+"$");
+    // console.log(typeof expr);
+    // if (typeof expr === "string") {
+    //     console.log(expr.startsWith("="));
+    // }
+    if (typeof expr !== "string" || expr === "" || ! expr.startsWith("=")) {
+        // console.log("そのまま");
         node.data.value = expr;
     } else {
+        // console.log("式");
         let dst = "";
         let index = 1;
         const length = expr.length;
@@ -203,18 +210,27 @@ function calcEachNode(node) {
                 target_node.link_ref_set.add(node);
                 node.data.value = "#LOOP";
                 const value = getNodeValue(target_node);
+                // console.log(target_node.data.name, "%"+value+"%");
                 if (typeof value === "string" && value.startsWith("#")) {
                     node.data.value = "#ERROR?" + expr.substring(0, index) + value
                             + expr.substring(index);
                     node.data.disp = node.data.value;
                     return;
                 }
+                if (typeof value === "string" && value === "") {
+                    node.data.value = "#ERROR?" + expr.substring(0, index) + "#EMPTY?"
+                            + expr.substring(index);
+                    node.data.disp = node.data.value;
+                    return;
+                }
                 dst += value;
             } else {
+                // console.log("#"+dst+"#");
                 dst += expr[index];
                 index += 1;
             }
         }
+        // console.log("dst", dst);
         const result = math.evaluate(dst);
         node.data.value = result;
     }
@@ -427,6 +443,7 @@ function rename_reexpr_Node(node, new_name, new_expr ) {
 //新しいノードを作る
 //TODO rootの子を作る
 function new_Node(node, new_name, new_expr ) {
+    console.log("start new_Node");
     const rootNode = node.ancestors ? node.ancestors().pop() : node;
     const parent_node = node.parent;
     console.log(node);
@@ -462,7 +479,7 @@ function new_Node(node, new_name, new_expr ) {
         });
 
     const sameNodes = rootNode.descendants()
-        .filter(d => d.data.name == new_name)
+        .filter(d => d.data.name === new_name)
         .forEach(d => {
             clear_ref(d);
             d.link_src_set.clear();

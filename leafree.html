@@ -88,29 +88,6 @@ const tooltip = d3.select("body")
 
 const node_menu = d3.select("#context-menu");
 
-// var data_tree = {
-//     "name": "root",
-//     "disp":"",
-//     "expr":"",
-//     "children": [
-//         {
-//             "name" : "child",
-//             "disp" : "1",
-//             "expr" : "1"
-//         }
-//         ,{
-//             "name" : "sister",
-//             "disp" : "ABC",
-//             "expr" : "ABC"
-//         }
-//         ,{
-//             "name" : "brother",
-//             "disp" : "あいうえお",
-//             "expr" : "あいうえお"
-//         }
-
-//     ]
-// };
 var data_tree = {
     "name": "root",
     "memo" : "tooltip memo",
@@ -177,7 +154,7 @@ treeLayout = d3.tree()
     .nodeSize([node_size_y * 4, node_size_x])
     .separation(function(a, b) {
         // return a.parent === b.parent ? 5 : 4;
-        return a.parent === b.parent ? 2 : 1;
+        return a.parent === b.parent ? 1 : 2;
     })
 treeLayout(root);
 const svg = d3.select("svg");
@@ -242,7 +219,13 @@ svg.insert("rect", ":first-child")
         openNewRootChildEditor(p[0], p[1]);
     });
 
+//==========================================================
 var tree = d3.tree().size([svgHeight, svgWidth-200]); //縦、横
+// var tree = d3.tree().size([svgHeight*1.5, svgWidth-200]); //縦、横
+//==========================================================
+
+
+
 // var tree = d3.tree().size([svgWidth, svgHeight]);
 // console.log(svgWidth, svgHeight);
 // var tree = d3.tree().size([node_size_x*5, node_size_y*10]);
@@ -449,7 +432,7 @@ d3.select("#load-btn").on("click", async function() {
         // console.log("before hierarchy", root);
         root = null;
         root = d3.hierarchy(data_tree);
-        // console.log("after hierarchy", root);
+        console.log("after hierarchy", root);
         const result = checkNodeName(root);
         if (result !== null) {
             alert(`ノード名「${result}」は重複しています。`);
@@ -464,11 +447,11 @@ d3.select("#load-btn").on("click", async function() {
             .forEach(d => {d.id = ++nodeCounter; d.data.id = d.id;})
 
         calcAll(root);
-        // console.log("after calcAll", root);
+        console.log("after calcAll", root);
         setNode(root);
         data_relation = [];
         create_relation();
-        // console.log(data_relation);
+        console.log(data_relation);
         // treeLayout = d3.tree().nodeSize([node_size_x, node_size_y]);
         treeLayout(root);
         // console.log("after treeLayout", root);
@@ -504,7 +487,6 @@ d3.select("#load-btn").on("click", async function() {
         //     }))
         //     );
         resize();
-        // var node_id = 0;
         update(root, data_relation);
         // console.log("after update", root);
         // console.log(
@@ -523,13 +505,12 @@ window.addEventListener("beforeunload", function() {
     console.log("page unload");
 });
 
-// var node_id = 0;
 update(root, data_relation);
 
 
 function update(root, data_relation) {
     root.descendants().forEach(function(d) {
-        if (!d.id) d.id = ++node_id;
+        if (!d.id) d.id = ++nodeCounter;
     });
 
     var positions = {};
@@ -1005,8 +986,12 @@ function addChildNode(parentNode, name, expr) {
     const newNode = newParentNode.children.find( function(node) { return node.data.name === name; });
     console.log("before setNode");
     setNode(root);
+    console.log(root);
     console.log("before new_Node");
     new_Node(newNode, name, set_expr);
+
+    calcAll(root);      //TODO
+    
     data_relation = [];
     create_relation();
     update(root, data_relation);
@@ -1293,10 +1278,22 @@ async function loadFileToData() {
         const file = await handle.getFile();
         const text = await file.text();
 
+        console.log("AAAA");
+
         // 3. 拡張子に応じてパース（D3.jsでの処理）
         let data = null;
         if (file.name.endsWith('.json')) {
+            console.log(text);
+            try {
+                // 💡 文字列をパース。失敗するとここでエラーが飛びます
+                data = JSON.parse(text); 
+            } catch (error) {
+                console.error("JSONのパースに失敗しました:", error.message);
+                // エラー時の処理: 処理を中断するか、空の配列を返す
+                return null; 
+            }
             data = JSON.parse(text);
+            console.log("BBB");
         } else if (file.name.endsWith('.csv')) {
             data = d3.csvParse(text); // D3.jsの機能でCSVをパース
         }
@@ -1310,9 +1307,9 @@ async function loadFileToData() {
 function setNode(root) {
     root.descendants()
         .forEach( d => {
-            if (!d.id) d.id = ++node_id;
-            d.link_ref_set = new Set();
-            d.link_src_set = new Set();
+            if (!d.id) d.id = ++nodeCounter;
+            d.link_ref_set = d.link_ref_set ?? new Set();
+            d.link_src_set = d.link_src_set ?? new Set();
             // 横幅など？
             // console.log(d.data.name, d.data.rectW);
             d.rectW = d.data.rectW ? d.data.rectW : Math.max(getTextWidth(d.data.disp, null), node_size_x) + 5 + 5; 
