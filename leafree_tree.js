@@ -186,7 +186,63 @@ function calcEachNode(node) {
         let index = 1;
         const length = expr.length;
         while (index < length) {
-            if (expr[index] === "'") {
+            console.log(expr);
+            if (expr.slice(index).startsWith("'*'")) {
+                console.log("startsWith", expr);
+                index += 3;
+                node.data.value = "#LOOP";
+
+                const children = node.descendants()
+                        .filter(d => {return d.depth === node.depth+1;});
+                value_list = [];
+                children.forEach(child_node => {
+                    const child_name = child_node.data.name;
+                    const value = getNodeValue(child_node);
+                    if (typeof value === "string" && value.startsWith("#")) {
+                        node.data.value = "#ERROR?" + expr.substring(0, index) + value
+                                + expr.substring(index);
+                        node.data.disp = node.data.value;
+                        return;
+                    }
+                    if (typeof value === "string" && value === "") {
+                        node.data.value = "#ERROR?" + expr.substring(0, index) + "#EMPTY?"
+                                + expr.substring(index);
+                        node.data.disp = node.data.value;
+                        return;
+                    }
+                    node.link_src_set.add(child_node);
+                    child_node.link_ref_set.add(node);
+                    value_list.push(value);
+                });
+                dst += value_list.join(",");
+            } else if (expr.slice(index).startsWith("'**'")) {
+                console.log("startsWith", expr);
+                index += 4;
+                node.data.value = "#LOOP";
+
+                const children = node.descendants();
+                value_list = [];
+                children.forEach(child_node => {
+                    const child_name = child_node.data.name;
+                    const value = getNodeValue(child_node);
+                    if (typeof value === "string" && value.startsWith("#")) {
+                        node.data.value = "#ERROR?" + expr.substring(0, index) + value
+                                + expr.substring(index);
+                        node.data.disp = node.data.value;
+                        return;
+                    }
+                    if (typeof value === "string" && value === "") {
+                        node.data.value = "#ERROR?" + expr.substring(0, index) + "#EMPTY?"
+                                + expr.substring(index);
+                        node.data.disp = node.data.value;
+                        return;
+                    }
+                    node.link_src_set.add(child_node);
+                    child_node.link_ref_set.add(node);
+                    value_list.push(value);
+                });
+                dst += value_list.join(",");
+            } else if (expr[index] === "'") {
                 index += 1;
                 let node_name = "";
                 while (expr[index] !== "'") {
@@ -499,6 +555,7 @@ function new_Node(node, new_name, new_expr ) {
 function clear_ref(node) {
     node.data.disp = null;
     node.data.value = null;
+    console.log(node.data.name, node.link_ref_set);
     if (node.link_ref_set.size !== 0) {
         root.descendants()
             .filter(d => node.link_ref_set.has(d))

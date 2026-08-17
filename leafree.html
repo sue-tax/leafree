@@ -505,7 +505,114 @@ window.addEventListener("beforeunload", function() {
     console.log("page unload");
 });
 
+let clipboardNode = null;
+
 update(root, data_relation);
+
+
+function cloneTreeData(data) {
+    return structuredClone(data);
+}
+
+function reassignIds(node) {
+    node.id = ++nodeCounter;
+
+    if (node.children && Array.isArray(node.children)) {
+        node.children.forEach(reassignIds);
+    }
+    return node;
+}
+
+function copy_node(d) {
+    clipboardNode = cloneTreeData(d.data);
+    clipboardParentNode = d.parent;
+    console.log("copied", clipboardNode);
+}
+
+function paste_node(d) {
+    if (!clipboardNode) return;
+    const old_parentX = clipboardParentNode.x;
+    const old_parentY = clipboardParentNode.y;
+
+    console.log(clipboardNode);
+    const newNode = reassignIds(cloneTreeData(clipboardNode));
+    console.log(newNode);
+    let name = newNode.name;
+
+    if (!d.data.children) {
+        d.data.children = [];
+    }
+    if (d.data.children.find(d => d.name === name)) {
+        let num = 1;
+        do {
+            name_plus = name +"_" + num.toString();
+        } while (d.data.children.find(d => d.name === name_plus));
+        name = name_plus;
+        newNode.name = name_plus;
+        // alert("ノード名が重複しています");
+        // return;
+    }
+
+    d.data.children.push(newNode);
+
+    // const rootID = root.id;
+    const parentID = d.id;
+    root = d3.hierarchy(root.data);
+    tree(root);
+    root.descendants()
+        .forEach(d => {d.id = d.data.id;})
+    const newParentNode = root.descendants().find( function(node) { return node.id === parentID; });
+    console.log(newParentNode);
+    const new_node = newParentNode.children.find( function(node) { return node.data.name === name; });
+    console.log(new_node);
+
+    const parentX = newParentNode.x;
+    const parentY = newParentNode.y;
+    console.log(old_parentX, old_parentY, parentX, parentY);
+    console.log("new_node", new_node);
+    print_root(root);
+    const children = new_node.descendants();
+    children.forEach(node => {
+            node.link_ref_set = new Set();
+            node.link_src_set = new Set();
+
+            node.data.value = null;
+            node.data.disp = null;
+        });
+    children.forEach(node => {
+             root.descendants()
+    //             .filter(d => (!d.data.value ||
+    //                     (typeof d.data.value === "string") && (d.data.value.startsWith("#"))))
+    //             .forEach(d => {
+    //                 d.data.disp = null;
+    //                 d.data.value = null;
+    //             });
+    //         const sameNodes = root.descendants()
+    //             .filter(d => d.data.name == name)
+    //             .forEach(d => {
+    //                 clear_ref(d);
+    //                 d.link_src_set.clear();
+    //             });
+    //         root.descendants()
+    //             .filter(d => (!d.data.value || d.data.value === null))
+    //             .forEach(d => {
+    //                 calcEachNode(d);
+    //             });
+
+             //customがあれば、再計算
+             if (node.data.customX && node.data.customX !== undefined) {
+                 node.data.customX +=  parentX - old_parentX;
+                 node.data.customY +=  parentY - old_parentY;
+             }
+         });
+    calcAll(root);      //TODO
+
+
+    setNode(root);
+    data_relation = [];
+    create_relation();
+    update(root, data_relation);
+}
 
 
 function update(root, data_relation) {
@@ -657,14 +764,14 @@ function update(root, data_relation) {
         //     reexpr_node(d);
         //     node_menu.style("display", "none");
         // });
-        // d3.select("#menu-item-copy").on("click", function() {
-        //     copy_node(d);
-        //     node_menu.style("display", "none");
-        // });
-        // d3.select("#menu-item-paste").on("click", function() {
-        //     paste_node(d);
-        //     node_menu.style("display", "none");
-        // });
+        d3.select("#menu-item-copy").on("click", function() {
+            copy_node(d);
+            node_menu.style("display", "none");
+        });
+        d3.select("#menu-item-paste").on("click", function() {
+            paste_node(d);
+            node_menu.style("display", "none");
+        });
         d3.select("#menu-item-delete").on("click", function() {
             delete_node(d);
             node_menu.style("display", "none");
@@ -991,7 +1098,7 @@ function addChildNode(parentNode, name, expr) {
     new_Node(newNode, name, set_expr);
 
     calcAll(root);      //TODO
-    
+
     data_relation = [];
     create_relation();
     update(root, data_relation);
@@ -1332,6 +1439,22 @@ function nodePosX(d) {
 
 function nodePosY(d) {
     return d.data.customX !== undefined ? d.data.customX : d.x;
+}
+
+function print_root(root) {
+    console.log("print_root",
+        root.descendants().map(d => ({
+            name: d.data.name,
+            depth: d.depth,
+            x: d.x,
+            y: d.y,
+            id : d.id,
+            link_ref_set : d.link_ref_set,
+            customX : d.data.customX,
+            customY : d.data.customY
+        }))
+        );
+
 }
 
 </script>
