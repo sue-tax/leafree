@@ -676,7 +676,7 @@ function update(root, data_relation) {
                 .attr("marker-end", "url(#arrow)"); // 終点に矢印を付与
         },
         update => update, // 既存の線はそのままキープ
-        exit => exit.remove() // 消えたリレーションは削除
+        exit => {console.log("relation exit"); exit.remove();} // 消えたリレーションは削除
     );
 
     // 3. 全リレーション（新規 + 既存）の座標を最新ノード位置（x, y）に更新
@@ -867,7 +867,7 @@ function update(root, data_relation) {
         .exit()
         .transition()
         .duration(duration)
-        .attr("transform", function(d) { return "translate(" + nodePosX(d) + "," + nodePosY(d) + ")";})
+        .attr("transform", function(d) { console.log("nodeExit"); return "translate(" + nodePosX(d) + "," + nodePosY(d) + ")";})
         .remove();
 
     nodeExit.select("rect")
@@ -968,9 +968,26 @@ function delete_node(node) {
 
     deleteNode(node);
 
+    cleanupEmptyChildren(node.parent);
+    cleanupEmptyChildren(root.data ? root.data : root);
+
+    print_root(root);
+
     data_relation = [];
     create_relation();
+    console.log("after create_relation" ,data_relation);
     update(root, data_relation);
+}
+
+
+function cleanupEmptyChildren(dataNode) {
+    if (dataNode.children && dataNode.children.length === 0) {
+        delete dataNode.children;
+    }
+    if (dataNode.children) {
+        dataNode.children.forEach(cleanupEmptyChildren);
+    }
+    // TODO node.data.children
 }
 
 
@@ -1288,9 +1305,10 @@ function openNodeEditor(d) {
                     }
                 }
             }
-
+            console.log(new_name, set_expr);
             const rv = rename_reexpr_Node(d, new_name, set_expr ) 
             if (! rv) {
+                console.log("rv", rv);
                 return;
             }            
             // calcAll(root);
@@ -1442,10 +1460,11 @@ function nodePosY(d) {
 }
 
 function print_root(root) {
-    console.log("print_root",
+    console.log("print_root", root,
         root.descendants().map(d => ({
             name: d.data.name,
             depth: d.depth,
+            children: d.data.children,
             x: d.x,
             y: d.y,
             id : d.id,
