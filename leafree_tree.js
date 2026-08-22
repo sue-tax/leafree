@@ -18,6 +18,11 @@ function isValidNodeName(name) {
     return true;
 }
 
+//ノード名の最初の文字が`_`である無名ノード名の判定
+function isNonameNodeName(name) {
+    return name.startsWith("_");
+}
+
 
 // function checkInvalidNodeName(name) {
 //     const invalidChar = /\"|\'|\/|\*|,| |０|１|２|３|４|５|６|７|８|９/; 
@@ -31,16 +36,47 @@ function isValidNodeName(name) {
 // 兄弟ノードでは同じノード名は使えません（無名ノードを除く）。
 // 親子間などでは同じノード名を使うことができます。
 // 兄弟ノードでも、ノード名の最初の文字が`_`である無名ノードだけは、同一のノード名が使用できます。
-// true ノード名として問題なし
-// false ノード名として不適当
+// true 重複なし、または、無名ノード名
+// false 重複
 function checkDuplicateNodeName(parent, name) {
-    if (name.startsWith("_")) {
+    if (isNonameNodeName(name)) {
         return true;
     }
     if (parent.descendants().find(d => {return d.data.name === name;})) {
         return false;
     }
     return true;
+}
+
+
+//parentノードの子ノードと重複しないノード名をnameから作り出す
+// 単に、ノード名の後ろを`_2`などにするだけ。
+// 戻り値 重複しないノード名
+function renameDuplicateNodeName(parent, name) {
+    const match = name.match(/^(.*?)(?:_(\d+))?$/);
+    const baseName = match[1];
+    const usedNames = new Set(
+        parent.children.map(node => node.data.name)
+    );
+    // if (!usedNames.has(baseName) && baseName === name) {
+    //     return rootName;
+    // }
+    let maxNum = 0;
+    usedNames.forEach(eachname => {
+        if (eachname === baseName) {
+            maxNum = Math.max(maxNum, 0);
+            return;
+        }
+        const m = eachname.match(new RegExp(`^${escapeRegExp(baseName)}_(\\d+)$`));
+        if (m) {
+            maxNum = Math.max(maxNum, Number(m[1]));
+        }
+    });
+    return `${baseName}_${maxNum + 1}`;
+}
+
+function escapeRegExp(str) {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 
@@ -70,7 +106,7 @@ function checkNodeNameBrother(nodeParent) {
         const seen = new Set();
         let duplicates = new Set();
         newMap.forEach(item => {
-            if (! item.startsWith("_")) {
+            if (! isNonameNodeName(item)) {
                 if (seen.has(item)) {
                     duplicates.add(item); // すでに見たことがあるなら重複セットに入れる
                 } else {
@@ -119,7 +155,8 @@ function checkNodeName(root) {
     //基本、重複がないことが前提で、早く処理する
     //重複がある場合は時間がかかるのは構わない。
     // まずは単純に重複がなければ、ＯＫ
-    const allNodes = root.descendants().filter(node => {return ! node.data.startsWith("_");});
+    const allNodes = root.descendants()
+            .filter(node => {return ! isNonameNodeName(node.data.name);});
     const uniqueNames = new Set(allNodes.map(node => node.data.name));
     //   console.log(uniqueNames);
     const flagAllUnique = uniqueNames.size === allNodes.length;
@@ -247,6 +284,7 @@ function calcEachNode(node) {
     if (node.data.disp && node.data.disp !== null) {
         return;
     }
+    var error_get_multi_value;
     // console.log(node);
     node.link_src_set.clear();
     const expr = node.data.expr;
@@ -269,7 +307,6 @@ function calcEachNode(node) {
             if (expr.slice(index).startsWith("'*'")) {
                 console.log("startsWith", expr);
                 index += 3;
-                // node.data.value = "#LOOP";
 
                 const children = node.descendants()
                         .filter(d => {return d.depth === node.depth+1;});
@@ -293,7 +330,7 @@ function calcEachNode(node) {
                     child_node.link_ref_set.add(node);
                     value_list.push(value);
                 });
-                dst += value_list.join(",");
+                dst += "[" + value_list.join(",") + "]";
             } else if (expr.slice(index).startsWith("'**'")) {
                 console.log("startsWith", expr);
                 index += 4;
@@ -320,7 +357,7 @@ function calcEachNode(node) {
                     child_node.link_ref_set.add(node);
                     value_list.push(value);
                 });
-                dst += value_list.join(",");
+                dst += "[" + value_list.join(",") + "]";
             } else if (expr[index] === "'") {
                 index += 1;
                 let node_name = "";
@@ -343,7 +380,7 @@ function calcEachNode(node) {
                 index += 1;
             }
         }
-        // console.log("dst", dst);
+        console.log("dst", dst);
         const result = math.evaluate(dst);
         node.data.value = result;
     }
@@ -377,7 +414,7 @@ function get_multi_value(node, indicator) {
             if (value_list === null) {
                 return null;
             }
-            return value_list.join(",");
+            return "[" + value_list.join(",") + "]";
         } else {
             error_get_multi_value = "#INVALID?";
             return null;
@@ -428,13 +465,13 @@ function get_multi_value(node, indicator) {
                 child_node.link_ref_set.add(node);
                 value_list.push(value);
             });
-            return value_list.join(",");
+            return "[" + value_list.join(",") + "]";
         } else if (indicator.startsWith("*./")) {
             value_list = get_multi_value_sub(node, node, indicator.slice(2));
             if (value_list === null) {
                 return null;
             }
-            return value_list.join(",");
+            return"[" + value_list.join(",") + "]";
         } else {
             error_get_multi_value = "#INVALID?";
             return null;
@@ -652,14 +689,13 @@ function deleteNode(node) {
 function renameNodeName(node, new_name) {
     const old_name = node.data.name;
     const parent_node = node.parent;
-    const inv_name = checkInvalidNodeName(new_name);
+    const inv_name = isValidNodeName(new_name);
     if (! inv_name) {
-        alert(`ノード名「${new_name}」は使えない文字（"'/*, )を含んでいます。`);
+        alert(`ノード名「${new_name}」は使えない文字を含んでいます。`);
         return false;
     }
-    const check_name = parent_node.children.find(child =>
-            child.data.name === new_name);
-    if (check_name !== undefined) {
+    const checkDuplicate = checkDuplicateNodeName(parent_node, new_name);
+    if (! checkDuplicate) {
         alert(`ノード名「${new_name}」は重複しています。`);
         return false;
     }
@@ -738,9 +774,16 @@ function rename_reexpr_Node(node, new_name, new_expr ) {
         //両方の変更
         const old_name = node.data.name;
         const parent_node = node.parent;
-        const check_name = parent_node.children.find(child =>
-                child.data.name === new_name);
-        if (check_name !== undefined) {
+        const inv_name = isValidNodeName(new_name);
+        if (! inv_name) {
+            alert(`ノード名「${new_name}」は使えない文字を含んでいます。`);
+            return false;
+        }
+        const checkDuplicate = checkDuplicateNodeName(parent_node, new_name);
+        // const check_name = parent_node.children.find(child =>
+        //         child.data.name === new_name);
+        // if (check_name !== undefined) {
+        if (! checkDuplicate) {
             alert(`ノード名「${new_name}」は重複しています。`);
             return false;
         }

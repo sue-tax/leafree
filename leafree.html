@@ -130,7 +130,17 @@ var data_relation = [];
 
 
 var root = d3.hierarchy(data_tree);
-
+const invalidNodes = root.descendants()
+        .filter(node => { return ! isValidNodeName(node.data.name);})
+if (invalidNodes.length !== 0) {
+    let invalidMap = invalidNodes.map(node => node.data.name);
+    alert(`ノード名「${invalidMap}」は不適切なノード名です。`);
+    var data_tree = {
+        "name": "root",
+        "expr":""
+    };
+    var root = d3.hierarchy(data_tree);
+}
 const result = checkNodeName(root);
 if (result !== null) {
     alert(`ノード名「${result}」は重複しています。`);
@@ -139,8 +149,6 @@ if (result !== null) {
         "expr":""
     };
     var root = d3.hierarchy(data_tree);
-    // exit(-1);
-    // return -1;
 }
 root.descendants()
     .forEach(d => {d.id = ++nodeCounter; d.data.id = d.id;})
@@ -345,6 +353,12 @@ var drag = d3.drag()
                     if (d.parent.children.length === 0) d.parent.children = null;
                 }
 
+                const checkNodeName = checkDuplicateNodeName(targetData, d.data.name);
+                if (! checkNodeName) {
+                    const renameName = renameDuplicateNodeName(targetData, d.data.name);
+                    console.log(renameName);
+                    d.data.name = renameName;
+                }
                 // --- 2. 新しい親に自分を追加 ---
                 if (targetData.data) {
                     if (!targetData.data.children) targetData.data.children = [];
@@ -433,6 +447,17 @@ d3.select("#load-btn").on("click", async function() {
         root = null;
         root = d3.hierarchy(data_tree);
         console.log("after hierarchy", root);
+        const invalidNodes = root.descendants()
+                .filter(node => { return ! isValidNodeName(node.data.name);})
+        if (invalidNodes.length !== 0) {
+            let invalidMap = invalidNodes.map(node => node.data.name);
+            alert(`ノード名「${invalidMap}」は不適切なノード名です。`);
+            data_tree = {
+                "name": "root",
+                "expr":""
+            };
+            root = d3.hierarchy(data_tree);
+        }
         const result = checkNodeName(root);
         if (result !== null) {
             alert(`ノード名「${result}」は重複しています。`);
@@ -542,17 +567,11 @@ function paste_node(d) {
     if (!d.data.children) {
         d.data.children = [];
     }
-    if (d.data.children.find(d => d.name === name)) {
-        let num = 1;
-        do {
-            name_plus = name +"_" + num.toString();
-        } while (d.data.children.find(d => d.name === name_plus));
-        name = name_plus;
+    const flag = checkDuplicateNodeName(d, name);
+    if (! flag) {
+        name_plus = renameDuplicateNodeName(parent, name);
         newNode.name = name_plus;
-        // alert("ノード名が重複しています");
-        // return;
     }
-
     d.data.children.push(newNode);
 
     // const rootID = root.id;
@@ -1077,9 +1096,8 @@ function addChildNode(parentNode, name, expr) {
     if (!parentNode.data.children) {
         parentNode.data.children = [];
     } else {
-        const flag = parentNode.data.children.
-            find(d => { return d.name === name});
-        if (flag) {
+        const flag = checkDuplicateNodeName(parentNode, name);
+        if (! flag) {
             alert("ノード名が重複しています");
             return;
         } 
@@ -1206,9 +1224,8 @@ function addChildToRootAtPosition(name, expr, posX, posY) {
     if (!root.data.children) {
         root.data.children = [];
     } else {
-        const flag = root.data.children.
-            find(d => { return d.name === name});
-        if (flag) {
+        const flag = checkDuplicateNodeName(parentNode, name);
+        if (! flag) {
             alert("ノード名が重複しています");
             return;
         } 
@@ -1383,6 +1400,8 @@ async function saveDataToFile( data, loadFileName ) {
 }
 
 async function loadFileToData() {
+    //将来的には、XMLを前提とする？
+    //データが増えたときの処理速度はXpathが速い？
     try {
 
         // const load_options = {
