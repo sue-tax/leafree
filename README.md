@@ -18,6 +18,8 @@
 
 次は、jsonでなく、xmlを利用し完成形を目指す。
 
+leafX.html,leafX_tree.js  ごく一部の機能のみ（ロード、セーブ、削除）　バックアップを兼ねてアップ
+
 ### TODO
 
 ~~sum関数~~   sum('*shiteinodename')
