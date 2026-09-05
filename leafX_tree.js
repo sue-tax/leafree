@@ -176,6 +176,9 @@ function getElementID(d) {
 function setNodeID(d, newID) {
     d.data.setAttribute("id", newID);
 }
+function setElementID(node_element, newID) {
+    node_element.setAttribute("id", newID);
+}
 
 function getNodeCustomX(d) {
     return Number(d.data.getAttribute("customX")) || undefined;
@@ -205,6 +208,19 @@ function setNodeRectW(d, rectH) {
     d.data.setAttribute("rectW", rectH);
 }
 
+function getNodeFontFamily(d) {
+    return d.data.getAttribute("font-family");
+}
+function setNodeFontFamily(d, font) {
+    return d.data.setAttribute("font-family", font);
+}
+
+function getNodeFontSize(d) {
+    return d.data.getAttribute("font-size");
+}
+function setNodeFontSize(d, font) {
+    return d.data.setAttribute("font-size", font);
+}
 
 function getNodeFormat(d) {
     let format = d.data.getAttribute("format");
@@ -223,6 +239,42 @@ function setNodeFormat(d, newformat) {
     }
 }
 
+function get_min_rectW_default(root) {
+    let min_rectW_default = root.data.getAttribute("min_rectW_default");
+    return min_rectW_default;
+}
+function set_min_rectW_default(root, min_rectW_default) {
+    if (min_rectW_default === null || min_rectW_default === undefined || min_rectW_default === "") {
+        // 空の値が渡されたら format 属性自体を消去し、自動的にデフォルト参照に戻るようにする
+        root.data.removeAttribute("min_rectW_default");
+    } else {
+        root.data.setAttribute("min_rectW_default", min_rectW_default);
+    }
+}
+function get_min_rectH_default(root) {
+    let min_rectH_default = root.data.getAttribute("min_rectH_default");
+    return min_rectH_default;
+}
+function set_min_rectH_default(root, min_rectH_default) {
+    if (min_rectH_default === null || min_rectH_default === undefined || min_rectH_default === "") {
+        // 空の値が渡されたら format 属性自体を消去し、自動的にデフォルト参照に戻るようにする
+        root.data.removeAttribute("min_rectH_default");
+    } else {
+        root.data.setAttribute("min_rectH_default", min_rectH_default);
+    }
+}
+function getNodeFontFamilyDefault(root) {
+    return root.data.getAttribute("font-family_default");
+}
+function setNodeFontFamilyDefault(root, font) {
+    return root.data.setAttribute("font-family_default", font);
+}
+function getNodeFontSizeDefault(root) {
+    return root.data.getAttribute("font-size_defalut");
+}
+function setNodeFontSizeDefault(root, font) {
+    return root.data.setAttribute("font-size_defalut", font);
+}
 
 //ノード名制限
 //ノード名に使用不可な文字が使われていないかをチェックする
@@ -261,10 +313,19 @@ function checkDuplicateNodeName(parent, name) {
     if (isNonameNodeName(name)) {
         return true;
     }
-    if (parent.descendants().find(d => {return getNodeName(d) === name;})) {
-        return false;
-    }
-    return true;
+    const children = parent.children || [];
+    const duplicated = children.some(d => getNodeName(d) === name);
+    return !duplicated;
+    // const parentDepth = parent.depth;
+    // if (parent.descendants().find(d => {
+    //         if (d.depth !== parentDepth+1) {
+    //             return true;
+    //         }
+    //         return getNodeName(d) === name;
+    //     })) {
+    //     return false;
+    // }
+    // return true;
 }
 
 
@@ -692,8 +753,9 @@ function calcEachNode(node) {
         console.log("calcEachNode end", value);
         return value;
     }
-    var error_get_multi_value;
+    var error_get_multi_value = "";
     // console.log(node);
+    console.log(node);
     node.link_src_set.clear();
     node.link_path_set.clear();
 
@@ -724,7 +786,11 @@ function calcEachNode(node) {
             setNodeValue(node, value);
             setNodeDisp(node, value.slice(1));
         } else {
-            value = expr;
+            if (! Number.isFinite(Number(expr))) {
+                value = "'" + expr;
+            } else {
+                value = expr;
+            }
             setNodeRepExpr(node, value);
             setNodeValue(node, value);
             setNodeDisp(node, value);
@@ -1503,12 +1569,14 @@ function new_Node(node, new_name, new_expr ) {
     // }
     
     console.log(node.data);
-    node.data.name = new_name;
-    node.data.expr = new_expr;
-    node.data.value = null;
-    node.data.disp = null;
+    // node.data.name = new_name;
+    // node.data.expr = new_expr;
+    // node.data.value = null;
+    // node.data.disp = null;
     node.link_ref_set = new Set();
     node.link_src_set = new Set();
+    node.link_path_set = new Set();
+    node.link_path_rev_set = new Set();
 
     // 以下のノードのvalueをクリアしてから、再計算
     //  エラーノード
@@ -1518,24 +1586,32 @@ function new_Node(node, new_name, new_expr ) {
     // 参照先のノードがなくてエラーや、重複ノードでエラーになっていた
     // ノードがエラーでなくなるかもしれない
     rootNode.descendants()
-        .filter(d => (!d.data.value ||
-                (typeof d.data.value === "string") && (d.data.value.startsWith("#"))))
+        .filter(d => function(d) {
+                const value = getNodeValue(d);
+                return value.startsWith("#"); })
         .forEach(d => {
-            d.data.disp = null;
-            d.data.value = null;
+            setNodeDisp(d, "");
+            setNodeValue(d, "");
+            setNodeRepExpr(d, "");
         });
 
     const sameNodes = rootNode.descendants()
-        .filter(d => d.data.name === new_name)
-        .forEach(d => {
-            clear_ref(d);
-            d.link_src_set.clear();
-        });
+        .filter(d => d.data.name === new_name);
+    sameNodes.forEach(d => {
+        let visited = new Set();
+        clear_ref(d, visited);
+        clear_src(d);
+    })
+    sameNodes.forEach(d => {
+        clear_path_rev(d);
+    })
     rootNode.descendants()
-        .filter(d => (!d.data.value || d.data.value === null))
+        .filter(d => (getNodeValue(d) === null))
         .forEach(d => {
+            console.log("calcEachNode", getNodeName(d));
             calcEachNode(d);
         });
+    console.log("new_Node end");
     return true;
   }
 

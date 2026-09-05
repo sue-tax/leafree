@@ -520,7 +520,7 @@ d3.select("#save-btn").on("click", async function() {
         };
 
 d3.select("#load-btn").on("click", async function() {
-    const xmlDoc = await loadXMLToData();
+    let xmlDoc = await loadXMLToData();
     if (xmlDoc) {
         nodeCounter = 0;
         console.log("load data", xmlDoc);
@@ -540,24 +540,34 @@ d3.select("#load-btn").on("click", async function() {
         if (invalidNodes.length !== 0) {
             let invalidMap = invalidNodes.map(node => getNodeName(node));
             alert(`ノード名「${invalidMap}」は不適切なノード名です。`);
-            data_tree = {
-                "name": "root",
-                "expr":""
-            };
+            const xmlString =`
+                <node>
+                    <name>root</name>
+                    <expr>""</expr>
+                </node>
+            `;
+            const xmlParser = new DOMParser();
+            xmlDoc = xmlParser.parseFromString(xmlString, "application/xml");
+            const parseError = xmlDoc.querySelector("parsererror");
             root = d3.hierarchy(
-                data_tree,  //xmlDoc.documentElement,
+                xmlDoc.documentElement,
                 node => Array.from(node.children).filter(child => child.tagName === "node")
             );
         }
         const result = checkNodeName(root);
         if (result !== null) {
             alert(`ノード名「${result}」は重複しています。`);
-            data_tree = {
-                "name": "root",
-                "expr":""
-            };
+            const xmlString =`
+                <node>
+                    <name>root</name>
+                    <expr>""</expr>
+                </node>
+            `;
+            const xmlParser = new DOMParser();
+            xmlDoc = xmlParser.parseFromString(xmlString, "application/xml");
+            const parseError = xmlDoc.querySelector("parsererror");
             root = d3.hierarchy(
-                data_tree,  //xmlDoc.documentElement,
+                xmlDoc.documentElement,
                 node => Array.from(node.children).filter(child => child.tagName === "node")
             );
         }
@@ -770,18 +780,18 @@ function update(root, data_relation) {
                 const metrics = getTextSize(getNodeDisp(d), font_family, font_size); 
                 const matchW = metrics.width + 5 + 3;
                 const matchH = metrics.height + 3;
-                console.log(matchW);
-                console.log("matchH", matchH);
+                // console.log(matchW);
+                // console.log("matchH", matchH);
                 let w = getNodeRectW(d);
                 if (w === undefined) {
                     w = Math.max(matchW, min_rectW_default); 
                 }
-                console.log("================", getNodeName(d), w);
+                // console.log("================", getNodeName(d), w);
                 let h = getNodeRectH(d);
                 if (h === undefined) {
                     h = Math.max(matchH, min_rectH_default);
                 }
-                console.log("----------------", getNodeName(d), h);
+                // console.log("----------------", getNodeName(d), h);
                 d.font_family = font_family;
                 d.font_size = font_size;
                 d.w = w;
@@ -834,7 +844,9 @@ function update(root, data_relation) {
         .attr("height", function(d) { return d.h; })
         .attr("x", 0)       // 左端を揃える
         // .attr("y",  function(d) { return -(d.hrectH?d.rectH:node_size_y) / 2; })
-        .attr("y",  function(d) { console.log(getNodeName(d),d.h); return -(d.h) / 2; })
+        .attr("y",  function(d) {
+                // console.log(getNodeName(d),d.h);
+                return -(d.h) / 2; })
         .style("fill", function(d) { return "#ddd"; })
         .style("stroke", "#111")
         .style("stroke-width", "1px")
@@ -1001,18 +1013,18 @@ function update(root, data_relation) {
                 const metrics = getTextSize(getNodeDisp(d), font_family, font_size); 
                 const matchW = metrics.width + 5 + 3;
                 const matchH = metrics.height + 3;
-                console.log(matchW);
-                console.log("matchH", matchH);
+                // console.log(matchW);
+                // console.log("matchH", matchH);
                 let w = getNodeRectW(d);
                 if (w === undefined) {
                     w = Math.max(matchW, min_rectW_default); 
                 }
-                console.log("================", getNodeName(d), w);
+                // console.log("================", getNodeName(d), w);
                 let h = getNodeRectH(d);
                 if (h === undefined) {
                     h = Math.max(matchH, min_rectH_default);
                 }
-                console.log("----------------", getNodeName(d), h);
+                // console.log("----------------", getNodeName(d), h);
                 d.font_family = font_family;
                 d.font_size = font_size;
                 d.w = w;
@@ -1028,7 +1040,9 @@ function update(root, data_relation) {
         .attr("height", function(d) { return d.h; })
         .attr("x", 0)       // 左端を揃える
         // .attr("y",  function(d) { return -(d.rectH?d.rectH:node_size_y) / 2; })
-        .attr("y",  function(d) { console.log("d.h", getNodeName(d), d.h); return -(d.h) / 2; })
+        .attr("y",  function(d) {
+                // console.log("d.h", getNodeName(d), d.h);
+                return -(d.h) / 2; })
         .style("fill", function(d) { return "#ddd"; })
         .style("stroke", "#111")
         .style("stroke-width", "1px")
@@ -1257,8 +1271,8 @@ function openNewChildEditor(parentNode) {
         .text("OK")
         .on("click", function() {
             const el = editor.node();
-            const name = el.querySelector(".new-name").value.trim();
-            const expr = el.querySelector(".new-expr").value.trim();
+            let name = el.querySelector(".new-name").value.trim();
+            let expr = el.querySelector(".new-expr").value.trim();
             if (!name || name.trim() === "") {
                 const result = confirm("ノード名の入力がないので、ノード名を「_」にしますか？");
                 if (result) {
