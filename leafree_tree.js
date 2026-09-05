@@ -1,20 +1,18 @@
 
 //ノード名制限
 //ノード名に使用不可な文字が使われていないかをチェックする
-//　`"`,`'`,`/`,`*`,`.`,` `（半角空白）は使えない
-// 全角の数字は使えない（将来のXML利用に備えて）
-// ノード名は、数字（半角・全角）、XML（大文字・小文字）で始まってはいけない。
+//　`"`,`'`,`/`,`*`,`.`,`&`,`<`,`>`,` `（半角空白）は使えない
+// ~~全角の数字は使えない（将来のXML利用に備えて）~~
+// ~~ノード名は、数字（半角・全角）、XML（大文字・小文字）で始まってはいけない。~~
 // true ノード名として問題なし
 // false ノード名として不適当
 function isValidNodeName(name) {
     if (typeof name !== "string") return false;
     if (name.length === 0) return false;
-
-    if (/[\"'\/\*\.\ ]/.test(name)) return false;
-    if (/^xml/i.test(name)) return false;
-    if (/^[0-9０-９]/.test(name)) return false;
-    if (/[０-９]/.test(name)) return false;
-
+    if (/[\"'\/\*\.\&\<\>\ ]/.test(name)) return false;
+    // if (/^xml/i.test(name)) return false;
+    // if (/^[0-9０-９]/.test(name)) return false;
+    // if (/[０-９]/.test(name)) return false;
     return true;
 }
 

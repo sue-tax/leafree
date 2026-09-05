@@ -235,14 +235,18 @@ namespace xml {
 		String customY
 		String rectW	%%ユーザーが設定した幅
 		String rectH	%%ユーザーが設定した高さ
+		String font-family
+		String font-size
 		String format
 		String color
-		String font
 		
         %% 全てのノードに対するデフォルト値
+        String min_rectW_default	%%ノードの横幅の最小値　ない場合もあり
+        String min_rectH_defalut
+		String font-family_default
+		String font-size_default
         String format_default
         String color_default
-        String font_default	
         
 	}
 
@@ -256,14 +260,17 @@ namespace xml {
 		
 		String memo
 		
-		
 		[属性]
 		String id	%% 固定ではない
 		String customX
 		String customY
+		String rectW	%%ユーザーが設定した幅
+		String rectH	%%ユーザーが設定した高さ
+		String font-family
+		String font-size
 		String format
 		String color
-		String font
+		
     }
     
     note for rootNode "ツリーの最上位（根）となる要素です。<br>全体に適用されるデフォルトフォントを保持します。"
@@ -279,6 +286,8 @@ namespace d3 {
 		Number y
 		Number w	%% 幅（一時保存用で毎回変わる）
         Number h
+        String font_family	%%（一時保存用で毎回変わる）
+        String font_size	%%（一時保存用で毎回変わる）
         Number depth
         
         link_src_set	%% 参照先のノードの集合

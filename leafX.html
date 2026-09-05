@@ -70,8 +70,15 @@ let editingNodeId = null;
 let nodeCounter = 0;
 
 
-const node_size_x = 60;
+const node_size_x = 80;
 const node_size_y = 14;
+
+const font_family_system = "sans-serif";
+const font_size_system = "14px";
+
+const textMeasureCanvas = document.createElement("canvas");
+const textMeasureContext = textMeasureCanvas.getContext("2d");
+
 
 const tooltip = d3.select("body")
     .append("div")
@@ -109,14 +116,14 @@ const xmlString =`
 <node memo="tooltip memo">
     <name>root</name>
     <expr>1</expr>
-    <node>
+    <node font-size="24px">
         <name>A</name>
         <expr>='root'</expr>
         <node>
             <name>A</name>
             <expr>"0"</expr>
         </node>
-        <node>
+        <node  font-family="MS Mincho" font-size="72px">
             <name>B</name>
             <expr>='A'</expr>
             <node>
@@ -124,10 +131,10 @@ const xmlString =`
                 <expr>='a'</expr>
             </node>
         </node>
-        <node>
+        <node font-family="MS Mincho" font-size="16px">
             <name>C</name>
-            <expr>=concat('a',"ABC")</expr>
-            <node>
+            <expr>=concat('a',"ABC","1234567890DDDDDDDDDDDDDDDDDDDDDDDDDあいう")</expr>
+            <node font-family="MS Mincho" font-size="40px">
                 <name>a</name>
                 <expr>"abc"</expr>
             </node>
@@ -335,7 +342,7 @@ var drag = d3.drag()
         g.selectAll(".link")
             .attr("d", function(l) {
                 if (!l || !l.source || !l.target) return null;
-                var rectW = l.source.w?l.source.w:node_size_x;
+                var rectW = l.source.w; //?l.source.w:node_size_x;
                 // var sourceY = l.source.data.customY !== undefined ? l.source.data.customY + rectW : l.source.y + rectW; 
                 // var sourceX = l.source.data.customX !== undefined ? l.source.data.customX : l.source.x;
                 // var targetY = l.target.data.customY !== undefined ? l.target.data.customY : l.target.y;
@@ -355,24 +362,26 @@ var drag = d3.drag()
         g.selectAll(".relation")
             .attr("x1", function(l) {
                 var sx = getNodeCustomY(l[0]) !== undefined ? getNodeCustomY(l[0]) : l[0].y;
-                var w  = l[0].w || node_size_x;
+                var w  = l[0].w; // || node_size_x;
                 // console.log("x1", sx +w/2);
                 return sx + w / 2;
             })
             .attr("y1", function(l) {
                 var sy = getNodeCustomX(l[0]) !== undefined ? getNodeCustomX(l[0]) : l[0].x;
-                var h  = l[0].data.rectH || node_size_y;
+                // var h  = l[0].data.rectH || node_size_y;
+                var h  = l[0].h;
                 // console.log("y1", sy +h/2);
                 return sy + h / 2;
             })
             .attr("x2", function(l) {
                 var tx = getNodeCustomY(l[1]) !== undefined ? getNodeCustomY(l[1]) : l[1].y;
-                var w  = l[1].w || node_size_x;
+                var w  = l[1].w; // || node_size_x;
                 return tx; // - l[0].y
             })
             .attr("y2", function(l) {
                 var ty = getNodeCustomX(l[1]) !== undefined ? getNodeCustomX(l[1]) : l[1].x;
-                var h  = l[1].data.rectH || node_size_y;
+                // var h  = l[1].data.rectH || node_size_y;
+                var h  = l[1].h;
                 return ty+ h / 2; // -l[0].x 
             })
             ;
@@ -704,6 +713,12 @@ function update(root, data_relation) {
             positions[d.id] = { x: customX, y: customY };
         }
     });
+
+    const min_rectW_default = get_min_rectW_default(root) ?? node_size_x;
+    const min_rectH_default = get_min_rectH_default(root) ?? node_size_y;
+    const font_family_default = getNodeFontFamilyDefault(root);
+    const font_size_default = getNodeFontSizeDefault(root);
+
     // tree レイアウト位置を計算
     tree(root);
 
@@ -738,11 +753,39 @@ function update(root, data_relation) {
     var textDisp = nodeEnter.append("text")
         .attr("class", "node-disp")
         .attr("x", function(d) {
+                let font_family = getNodeFontFamily(d);
+                if (! font_family) {
+                    font_family = getNodeFontFamilyDefault(root);
+                    if (! font_family) {
+                        font_family = font_family_system;
+                    }
+                }
+                let font_size = getNodeFontSize(d);
+                if (! font_size) {
+                    font_size = getNodeFontSizeDefault(root);
+                    if (! font_size) {
+                        font_size = font_size_system;
+                    }
+                }
+                const metrics = getTextSize(getNodeDisp(d), font_family, font_size); 
+                const matchW = metrics.width + 5 + 3;
+                const matchH = metrics.height + 3;
+                console.log(matchW);
+                console.log("matchH", matchH);
                 let w = getNodeRectW(d);
                 if (w === undefined) {
-                    w = getTextWidth(getNodeDisp(d)); 
+                    w = Math.max(matchW, min_rectW_default); 
                 }
+                console.log("================", getNodeName(d), w);
+                let h = getNodeRectH(d);
+                if (h === undefined) {
+                    h = Math.max(matchH, min_rectH_default);
+                }
+                console.log("----------------", getNodeName(d), h);
+                d.font_family = font_family;
+                d.font_size = font_size;
                 d.w = w;
+                d.h = h;
                 return w; })
         // ★ 右詰め（テキストの末尾がX座標に揃う）にする
         .attr("text-anchor", "end")
@@ -751,45 +794,51 @@ function update(root, data_relation) {
         // 四角形の垂直中央に合わせるためのベースライン調整（フォントサイズに合わせて微調整してください）
         // .attr("dy", "0.35em") 
         .attr("y", 0)         // 四角形の垂直中央（rectのyが -rectH/2 なので、y=0 が中央になります）
-        ;
+        .text(function(d) { return getNodeDisp(d); })
+        .style("font-size", function(d) { return d.font_size;})
+        .style("font-family", function(d) { return d.font_family;})
+        .style("fill-opacity", 1e-6);
 
-        // 1. relationのデータバインド（バグを防ぐため明示的に文字列を返す）
-    var relation = g.selectAll('.relation')
-        .data(data_relation, function(d) { 
-            return d[0].id + "-" + d[1].id; 
-        });
+    //     // 1. relationのデータバインド（バグを防ぐため明示的に文字列を返す）
+    // var relation = g.selectAll('.relation')
+    //     .data(data_relation, function(d) { 
+    //         return d[0].id + "-" + d[1].id; 
+    //     });
 
-    // 2. enter, update, exit の一括処理（.joinを使用）
-    var relationLines = relation.join(
-        enter => {
-            // 新しく追加されたリレーション（線）
-            return enter.append("line")
-                .attr("class", "relation")
-                .attr("stroke", "#222") // リレーションとリンクを区別する色
-                .attr("stroke-width", 1)
-                .attr("stroke-dasharray", "1 1")
-                .attr("marker-end", "url(#arrow)"); // 終点に矢印を付与
-        },
-        update => update, // 既存の線はそのままキープ
-        exit => {console.log("relation exit"); exit.remove();} // 消えたリレーションは削除
-    );
+    // // 2. enter, update, exit の一括処理（.joinを使用）
+    // var relationLines = relation.join(
+    //     enter => {
+    //         // 新しく追加されたリレーション（線）
+    //         return enter.append("line")
+    //             .attr("class", "relation")
+    //             .attr("stroke", "#222") // リレーションとリンクを区別する色
+    //             .attr("stroke-width", 1)
+    //             .attr("stroke-dasharray", "1 1")
+    //             .attr("marker-end", "url(#arrow)"); // 終点に矢印を付与
+    //     },
+    //     update => update, // 既存の線はそのままキープ
+    //     exit => {exit.remove();} // 消えたリレーションは削除
+    // );
 
-    // 3. 全リレーション（新規 + 既存）の座標を最新ノード位置（x, y）に更新
-    // TODO x2,2の調整
-    relationLines
-        .attr("x1", function(d) { return d[0].y + (d[0].w)/2; })
-        .attr("y1", function(d) { return d[0].x; })
-        .attr("x2", function(d) { return d[1].y; })
-        .attr("y2", function(d) { return d[1].x; });
+    // // 3. 全リレーション（新規 + 既存）の座標を最新ノード位置（x, y）に更新
+    // // TODO x2,2の調整
+    // relationLines
+    //     .attr("x1", function(d) { return d[0].y + (d[0].w)/2; })
+    //     .attr("y1", function(d) { return d[0].x; })
+    //     .attr("x2", function(d) { return d[1].y; })
+    //     .attr("y2", function(d) { return d[1].x; });
 
     var node_rect = nodeEnter.append("rect")
-        .attr("width", function(d) { return d.w?d.w:node_size_x; })
-        .attr("height", function(d) { return d.rectH?d.rectH:node_size_y; })
+        .attr("width", function(d) { return d.w; })
+        // .attr("height", function(d) { return d.rectH?d.rectH:node_size_y; })
+        .attr("height", function(d) { return d.h; })
         .attr("x", 0)       // 左端を揃える
-        .attr("y",  function(d) { return -(d.rectH?d.rectH:node_size_y) / 2; })
+        // .attr("y",  function(d) { return -(d.hrectH?d.rectH:node_size_y) / 2; })
+        .attr("y",  function(d) { console.log(getNodeName(d),d.h); return -(d.h) / 2; })
         .style("fill", function(d) { return "#ddd"; })
         .style("stroke", "#111")
         .style("stroke-width", "1px")
+        .style("fill-opacity", 1e-6)
         ;
     nodeEnter
         .on("dblclick", function(d) {
@@ -882,8 +931,8 @@ function update(root, data_relation) {
         .style("fill-opacity", 1e-6);
 
 
-    nodeEnter.append("text")
-        .attr("class", "node-disp")
+    // nodeEnter.append("text")
+    //     .attr("class", "node-disp")
         // .attr("x", function(d) { return d.rectW; /*?d.rectW:node_size_x;*/ })
         // ★ 右詰め（テキストの末尾がX座標に揃う）にする
         // .attr("text-anchor", "end")
@@ -892,13 +941,13 @@ function update(root, data_relation) {
         // 四角形の垂直中央に合わせるためのベースライン調整（フォントサイズに合わせて微調整してください）
         // .attr("dy", "0.35em") 
         // .attr("y", 0)         // 四角形の垂直中央（rectのyが -rectH/2 なので、y=0 が中央になります）
-        .text(function(d) { return getNodeDisp(d); })
-        .style("fill-opacity", 1e-6);
+        // .text(function(d) { return getNodeDisp(d); })
+        // .style("fill-opacity", 1e-6);
 
     nodeEnter.append("text")
         .attr("class", "node-expr")
         .attr("x", 0)
-        .attr("dy", "20")      // 上辺から20px下に
+        .attr("dy", "20")      // 上辺から20px下に  TODO
         .text(function(d) { return getNodeExpr(d); })
         .style("fill-opacity", 1e-6);
 
@@ -930,11 +979,56 @@ function update(root, data_relation) {
         // .call(drag)
         ;
 
+    nodeUpdate.select(".node-disp")
+        .transition()
+        .duration(duration)
+        // .attr("x", function(d) { return d.w; /*?d.rectW:node_size_x;*/ })
+        .attr("x", function(d) {
+                let font_family = getNodeFontFamily(d);
+                if (! font_family) {
+                    font_family = getNodeFontFamilyDefault(root);
+                    if (! font_family) {
+                        font_family = font_family_system;
+                    }
+                }
+                let font_size = getNodeFontSize(d);
+                if (! font_size) {
+                    font_size = getNodeFontSizeDefault(root);
+                    if (! font_size) {
+                        font_size = font_size_system;
+                    }
+                }
+                const metrics = getTextSize(getNodeDisp(d), font_family, font_size); 
+                const matchW = metrics.width + 5 + 3;
+                const matchH = metrics.height + 3;
+                console.log(matchW);
+                console.log("matchH", matchH);
+                let w = getNodeRectW(d);
+                if (w === undefined) {
+                    w = Math.max(matchW, min_rectW_default); 
+                }
+                console.log("================", getNodeName(d), w);
+                let h = getNodeRectH(d);
+                if (h === undefined) {
+                    h = Math.max(matchH, min_rectH_default);
+                }
+                console.log("----------------", getNodeName(d), h);
+                d.font_family = font_family;
+                d.font_size = font_size;
+                d.w = w;
+                d.h = h;
+                return w; })
+        .text(function(d) { return getNodeDisp(d); })
+        .style("fill-opacity", 1);
+
     nodeUpdate.select("rect")
-        .attr("width", function(d) { return d.w?d.w:node_size_x; })
-        .attr("height", function(d) { return d.rectH?d.rectH:node_size_y; })
+        // .attr("width", function(d) { return d.w?d.w:node_size_x; })
+        // .attr("height", function(d) { return d.rectH?d.rectH:node_size_y; })
+        .attr("width", function(d) { return d.w; })
+        .attr("height", function(d) { return d.h; })
         .attr("x", 0)       // 左端を揃える
-        .attr("y",  function(d) { return -(d.rectH?d.rectH:node_size_y) / 2; })
+        // .attr("y",  function(d) { return -(d.rectH?d.rectH:node_size_y) / 2; })
+        .attr("y",  function(d) { console.log("d.h", getNodeName(d), d.h); return -(d.h) / 2; })
         .style("fill", function(d) { return "#ddd"; })
         .style("stroke", "#111")
         .style("stroke-width", "1px")
@@ -943,12 +1037,6 @@ function update(root, data_relation) {
         .transition()
         .duration(duration)
         .text(function(d) { return getNodeName(d);})
-        .style("fill-opacity", 1);
-    nodeUpdate.select(".node-disp")
-        .transition()
-        .duration(duration)
-        .attr("x", function(d) { return d.w; /*?d.rectW:node_size_x;*/ })
-        .text(function(d) { return getNodeDisp(d); })
         .style("fill-opacity", 1);
     nodeUpdate.select(".node-expr")
         .transition()
@@ -989,7 +1077,8 @@ function update(root, data_relation) {
         var sX = (!isNaN(d.source.x)) ? d.source.x : 0;
         var tY = (!isNaN(d.target.y)) ? d.target.y : 0;
         var tX = (!isNaN(d.target.x)) ? d.target.x : 0;
-        var sourceRectW = d.source.w ? (d.source.w) : 0;
+        // var sourceRectW = d.source.w ? (d.source.w) : 0;
+        var sourceRectW = d.source.w;
         var pathGenerator = d3.linkHorizontal()
             .x(function(p) { return p.yPos; })
             .y(function(p) { return p.xPos; });
@@ -1015,7 +1104,8 @@ function update(root, data_relation) {
             var sX = d.source.x !== undefined ? d.source.x : 0;
             var tY = d.target.y !== undefined ? d.target.y : 0;
             var tX = d.target.x !== undefined ? d.target.x : 0;
-            var sourceRectW = d.source.w ? (d.source.w ) : node_size_x;
+            // var sourceRectW = d.source.w ? (d.source.w ) : node_size_x;
+            var sourceRectW = d.source.w;
             var pathGenerator = d3.linkHorizontal()
                 .x(function(p) { return p.yPos; }) // 横軸にyPosをマッピング
                 .y(function(p) { return p.xPos; }); // 縦軸にxPosをマッピング
@@ -1044,6 +1134,34 @@ function update(root, data_relation) {
         .remove();
     // console.log("before update");
 
+        // 1. relationのデータバインド（バグを防ぐため明示的に文字列を返す）
+    var relation = g.selectAll('.relation')
+        .data(data_relation, function(d) { 
+            return d[0].id + "-" + d[1].id; 
+        });
+
+    // 2. enter, update, exit の一括処理（.joinを使用）
+    var relationLines = relation.join(
+        enter => {
+            // 新しく追加されたリレーション（線）
+            return enter.append("line")
+                .attr("class", "relation")
+                .attr("stroke", "#222") // リレーションとリンクを区別する色
+                .attr("stroke-width", 1)
+                .attr("stroke-dasharray", "1 1")
+                .attr("marker-end", "url(#arrow)"); // 終点に矢印を付与
+        },
+        update => update, // 既存の線はそのままキープ
+        exit => {exit.remove();} // 消えたリレーションは削除
+    );
+
+    // 3. 全リレーション（新規 + 既存）の座標を最新ノード位置（x, y）に更新
+    // TODO x2,2の調整
+    relationLines
+        .attr("x1", function(d) { return d[0].y + (d[0].w)/2; })
+        .attr("y1", function(d) { return d[0].x; })
+        .attr("x2", function(d) { return d[1].y; })
+        .attr("y2", function(d) { return d[1].x; });
 
 }
 
@@ -1095,11 +1213,11 @@ function openNewChildEditor(parentNode) {
     activeExprInput = null;
     editingNodeId = null;
 
-    const w = 220;
+    const w = 200;
     const h = 90;
 
     const px = nodePosX(parentNode) + 80;
-    const py = nodePosY(parentNode) - h / 2;
+    const py = nodePosY(parentNode) - h;
 
     const editor = g.append("foreignObject")
         .attr("class", "node-editor")
@@ -1107,7 +1225,6 @@ function openNewChildEditor(parentNode) {
         .attr("y", py)
         .attr("width", w)
         .attr("height", h);
-
     const box = editor.append("xhtml:div")
         .style("width", w + "px")
         .style("height", h + "px")
@@ -1117,14 +1234,12 @@ function openNewChildEditor(parentNode) {
         .style("padding", "6px")
         .style("box-sizing", "border-box")
         .style("font", "12px sans-serif");
-
     box.append("xhtml:input")
         .attr("class", "new-name")
         .attr("type", "text")
         .attr("placeholder", "node name")
         .style("width", "100%")
         .style("box-sizing", "border-box");
-
     box.append("xhtml:input")
         .attr("class", "new-expr")
         .attr("type", "text")
@@ -1135,21 +1250,32 @@ function openNewChildEditor(parentNode) {
         .each(function() {
             activeExprInput = this;
         });
-
-
     const row = box.append("xhtml:div")
         .style("margin-top", "6px")
         .style("text-align", "right");
-
     row.append("xhtml:button")
         .text("OK")
         .on("click", function() {
             const el = editor.node();
             const name = el.querySelector(".new-name").value.trim();
             const expr = el.querySelector(".new-expr").value.trim();
+            if (!name || name.trim() === "") {
+                const result = confirm("ノード名の入力がないので、ノード名を「_」にしますか？");
+                if (result) {
+                    name = "_";
+                } else {
+                    return;
+                }
+            }
+            if (!expr) { // || expr.trim() === "") {
+                const result = confirm('内容の入力がないので、内容を「""」にしますか？');
+                if (result) {
+                    expr = '""';
+                } else {
+                    return;
+                }
 
-            if (!name) return;
-
+            }
             addChildNode(parentNode, name, expr);
             g.selectAll(".node-editor").remove();
         });
@@ -1169,15 +1295,17 @@ function openNewChildEditor(parentNode) {
 
 function addChildNode(parentNode, name, expr) {
     console.log("addChildNode", parentNode);
-    if (!parentNode.data.children) {
-        parentNode.data.children = [];
-    } else {
-        const flag = checkDuplicateNodeName(parentNode, name);
-        if (! flag) {
-            alert("ノード名が重複しています");
-            return;
-        } 
+    const isValid = isValidNodeName(name);
+    if (! isValid) {
+        alert("不適切なノード名です")
+        return;
     }
+    const flag = checkDuplicateNodeName(parentNode, name);
+    if (! flag) {
+        console.log(getNodeName(parentNode));
+        alert("ノード名が重複しています");
+        return;
+    } 
     let set_expr = expr;
     if (typeof expr === "string") {
         if (expr.trim() !== "") {
@@ -1188,27 +1316,64 @@ function addChildNode(parentNode, name, expr) {
     }
     console.log("set_expr", set_expr);
     console.log(typeof set_expr);
-    newData = {
-        name: name,
-        expr: set_expr,
-        children: []
-        ,id: ++nodeCounter
-    };
 
-    parentNode.data.children.push(newData);
+    print_root(root);
+
+    const parentElement = parentNode.data;
+    const doc = parentElement.ownerDocument;
+
+    const newNodeElement = doc.createElement("node");
+    const nameElement = doc.createElement("name");
+    const exprElement = doc.createElement("expr");
+    // const valueElement = doc.createElement("value");
+
+    nameElement.textContent = name;
+    exprElement.textContent = set_expr; // ?? "";
+    // valueElement.textContent = "";
+
+    newNodeElement.appendChild(nameElement);
+    newNodeElement.appendChild(exprElement);
+    // newNodeElement.appendChild(valueElement);
+    parentElement.appendChild(newNodeElement);
+    setElementID(newNodeElement, ++nodeCounter);
+
     const parentID = parentNode.id;
-    root = d3.hierarchy(root.data);
-    root.descendants()
-        .forEach(d => {d.id = d.data.id;})
-    const newParentNode = root.descendants().find( function(node) { return node.id === parentID; });
-    const newNode = newParentNode.children.find( function(node) { return node.data.name === name; });
+    console.log(parentID);
+
+    root = d3.hierarchy(doc.documentElement, xmlNode => {
+        return Array.from(xmlNode.children).filter(child => child.tagName === "node");
+    });
+        // root.descendants()
+        // .forEach(d => {d.id = d.data.id;})
+
+    root.descendants().forEach(d => {
+        // console.log(getNodeName(d));
+        d.id = getNodeID(d); //d.data.querySelector(':scope > id');
+        // console.log(id);
+        // if (id) {
+        //     d.id = id;
+        //     // console.log(d.id);
+        // }
+    });
+
+    const newParentNode = root.descendants().find(node => node.id === parentID);
+    console.log(newParentNode);
+    const newNode = newParentNode.children.find(node => node.data === newNodeElement);
+
     console.log("before setNode");
     setNode(root);
     console.log(root);
     console.log("before new_Node");
     new_Node(newNode, name, set_expr);
+    // setNode(root);
+ 
+    print_root(root);
 
-    calcAll(root);      //TODO
+    // treeLayout(root);
+
+    calcAll(root);
+
+    print_root(root);
 
     data_relation = [];
     create_relation();
@@ -1511,28 +1676,48 @@ async function loadXMLToData() {
 
 
 function setNode(root) {
+    console.log("start setNode");
     root.descendants()
         .forEach( d => {
-            if (!d.id) d.id = ++nodeCounter;
+            // console.log(getNodeName(d));
+            if (!d.id) d.id = getNodeID(d); //++nodeCounter;
             d.link_ref_set = d.link_ref_set ?? new Set();
             d.link_src_set = d.link_src_set ?? new Set();
             d.link_path_set = d.link_path_set ?? new Set();
+            d.link_path_rev_set = d.link_path_rev_set ?? new Set();
 
             // 横幅など？
             // console.log(d.data.name, d.data.rectW);
-            d.rectW = d.rectW ? d.rectW : Math.max(getTextWidth(getNodeDisp(d), null), node_size_x) + 5 + 5; 
+            // d.rectW = d.rectW ? d.rectW : Math.max(getTextWidth(getNodeDisp(d), null), node_size_x) + 5 + 5; 
             // console.log(d.data.name, d.rectW);
         })
 }
 
 // --- 2. 文字列の幅（ピクセル数）を正確に測定するヘルパー関数 ---
-function getTextWidth(text, font) {
-    var canvas = document.createElement('canvas');
-    var context = canvas.getContext('2d');
-    context.font = font || '14px sans-serif';
-    var metrics = context.measureText(text);
-    return metrics.width;
+// function getTextSize(text, font_family, font_size) {
+//     var canvas = document.createElement('canvas');
+//     var context = canvas.getContext('2d');
+//     // context.font = font || '14px sans-serif';
+//     context.font = font_size + " " + font_family;
+//     const metrics = context.measureText(text);
+//     return metrics; //_.width + 5 + 5;   //左右に余裕を持たせる   
+// }
+// const textMeasureCanvas = document.createElement("canvas");
+// const textMeasureContext = textMeasureCanvas.getContext("2d");
+
+function getTextSize(text, font_family, font_size) {
+    textMeasureContext.font = font_size + " " + font_family;
+    const metrics = textMeasureContext.measureText(text);
+    const width = metrics.width;
+    let height =
+        (metrics.actualBoundingBoxAscent || 0) +
+        (metrics.actualBoundingBoxDescent || 0);
+    if (!height) {
+        height = parseFloat(font_size) || 16;
+    }
+    return { width, height };
 }
+
 
 function nodePosX(d) {
     const customY = getNodeCustomY(d);
