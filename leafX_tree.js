@@ -1,281 +1,3 @@
-function getNodeName(node) {
-    const element = node.data.querySelector(':scope > name');
-    // console.log(node, element);
-    return element.textContent;
-}
-function setNodeName(node, newName) {
-    let element = node.data.querySelector(':scope > name');
-    element.textContent = newName;
-}
-
-function getNodeExpr(node) {
-    const element = node.data.querySelector(':scope > expr');
-    return element.textContent;
-}
-function setNodeExpr(node, newExpr) {
-    let element = node.data.querySelector(':scope > expr');
-    element.textContent = newExpr;
-}
-function setElementExpr(node_element, expr) {
-    let element = node_element.querySelector(':scope > expr');
-    if (!element) {
-        element = node_element.ownerDocument.createElement('expr');
-        node_element.data.appendChild(element);
-    }
-    element.textContent = expr;
-}
-
-function getNodeRepExpr(node) {
-    const element = node.data.querySelector(':scope > repExpr');
-    return element ? element.textContent : "";
-}
-function setNodeRepExpr(d, newRepExpr) {
-    let element = d.data.querySelector(':scope > repExpr');
-    if (!element) {
-        element = d.data.ownerDocument.createElement('repExpr');
-        d.data.appendChild(element);
-    }
-    element.textContent = newRepExpr;
-}
-function setElementRepExpr(node_element, repExpre) {
-    let element = node_element.querySelector(':scope > repExpr');
-    if (!element) {
-        element = node_element.ownerDocument.createElement('repExpr');
-        node_element.data.appendChild(element);
-    }
-    element.textContent = repExpre;
-}
-
-// function getNodeValue(node) {
-//     return node.data.getAttribute("value") || null;
-// }
-function getNodeValueNoCalc(d) {
-    // console.log("getNodeValueNoCalc", d);
-    let element = d.data.querySelector(':scope > value');
-    // console.log(element);
-    // console.log("#"+element.textContent+"#");
-    // console.log("==========================================================")
-//     もし <value> の中身を 画面表示用の HTML 文字列 としてどこかで触っているなら、
-// 見た目だけ残って textContent は空になることがあります。
-    // console.log("length", element.textContent.length);
-    // console.log(
-    //     Array.from(element.textContent).map(ch => ch.charCodeAt(0))
-    // );
-    // if (element.textContent !== "") {
-    //     console.log("!==");
-    // } else {
-    //     console.log("===");
-    // }
-    if (element && element.textContent !== "") {
-        // console.log("getNodeValueNoCalc end1", element.textContent);
-        return element.textContent;
-    }
-
-    // console.log("getNodeValueNoCalc end2", element.textContent);
-    return "";
-}
-function getNodeValue(d) {
-    // console.log("getNodeValue", d);
-    let element = d.data.querySelector(':scope > value');
-    // console.log(element);
-    // console.log("#"+element.textContent+"#");
-    if (element && element.textContent !== "") {
-        // console.log("getNodeValue end1", element.textContent);
-        return element.textContent;
-    }
-    const value = calcEachNode(d);
-    // console.log("getNodeValue end", value);
-    return value;
-}
-function getElementValue(node_element) {
-    console.log("getElementValue", element);
-    let element = node_element.querySelector(':scope > value');
-    // console.log(element);
-    if (element && element.textContent !== "") {
-        console.log("getNodeValue", element.textContent);
-        return element.textContent;
-    }
-    // TODO 未完成
-    //const root_node = node_element.ancestors ? node.ancestors().pop() : node_element;
-    const value = calcEachNode(d);
-    return value;
-}
-
-function setNodeValue(d, value) {
-    // console.log("==========================================================")
-    // console.log("setNodeValue", value, typeof value);
-    // console.log("==========================================================")
-    let element = d.data.querySelector(':scope > value');
-    if (!element) {
-        element = d.data.ownerDocument.createElement('value');
-        d.data.appendChild(element);
-    }
-    element.textContent = value;
-}
-function setElementValue(node_element, value) {
-    let element = node_element.querySelector(':scope > value');
-    if (!element) {
-        element = node_element.ownerDocument.createElement('value');
-        node_element.data.appendChild(element);
-    }
-    element.textContent = value;
-}
-
-function getNodeDisp(d) {
-    let element = d.data.querySelector(':scope > disp');
-    // const element = Array.from(d.data.children)
-    //     .find(child => child.tagName === "disp");
-    // console.log("#"+element.textContent+"#");
-    return element ? element.textContent!== "" ? element.textContent : "": "";
-}
-function setNodeDisp(d, disp) {
-    let element = d.data.querySelector(':scope > disp');
-    if (!element) {
-        element = d.data.ownerDocument.createElement('disp');
-        d.data.appendChild(element);
-    }
-    element.textContent = disp;
-}
-function setElementDisp(node_element, disp) {
-    let element = node_element.querySelector(':scope > disp');
-    if (!element) {
-        element = node_element.ownerDocument.createElement('disp');
-        d.data.appendChild(element);
-    }
-    element.textContent = disp;
-}
-
-function getNodeMemo(d) {
-    let element = d.data.querySelector(':scope > memo');
-    return element ? element.textContent : "";
-}
-function setNodeMemo(d, memo) {
-    let element = d.data.querySelector(':scope > memo');
-    if (!element) {
-        element = d.data.ownerDocument.createElement('memo');
-        d.data.appendChild(element);
-    }
-    element.textContent = memo;
-}
-function setElementMemo(node_element, memo) {
-    let element = node_element.querySelector(':scope > memo');
-    if (!element) {
-        element = node_element.ownerDocument.createElement('memo');
-        d.data.appendChild(element);
-    }
-    element.textContent = memo;
-}
-
-
-function getNodeID(d) {
-    return Number(d.data.getAttribute("id")) || null;
-}
-function getElementID(d) {
-    return Number(d.getAttribute("id")) || null;
-}
-function setNodeID(d, newID) {
-    d.data.setAttribute("id", newID);
-}
-function setElementID(node_element, newID) {
-    node_element.setAttribute("id", newID);
-}
-
-function getNodeCustomX(d) {
-    return Number(d.data.getAttribute("customX")) || undefined;
-}
-function setNodeCustomX(d, customX) {
-    d.data.setAttribute("customX", customX);
-}
-
-function getNodeCustomY(d) {
-    return Number(d.data.getAttribute("customY")) || undefined;
-}
-function setNodeCustomY(d, customY) {
-    d.data.setAttribute("customY", customY);
-}
-
-function getNodeRectW(d) {
-    return Number(d.data.getAttribute("rectW")) || undefined;
-}
-function setNodeRectW(d, rectW) {
-    d.data.setAttribute("rectW", rectW);
-}
-
-function getNodeRectH(d) {
-    return Number(d.data.getAttribute("rectH")) || undefined;
-}
-function setNodeRectW(d, rectH) {
-    d.data.setAttribute("rectW", rectH);
-}
-
-function getNodeFontFamily(d) {
-    return d.data.getAttribute("font-family");
-}
-function setNodeFontFamily(d, font) {
-    return d.data.setAttribute("font-family", font);
-}
-
-function getNodeFontSize(d) {
-    return d.data.getAttribute("font-size");
-}
-function setNodeFontSize(d, font) {
-    return d.data.setAttribute("font-size", font);
-}
-
-function getNodeFormat(d) {
-    let format = d.data.getAttribute("format");
-    if (! format) {
-        const rootNode = d.ancestors ? d.ancestors().pop() : d;
-        format = rootNode.data.getAttribute("format_default") || null;
-    }
-    return format;
-}
-function setNodeFormat(d, newformat) {
-    if (newformat === null || newformat === undefined || newformat === "") {
-        // 空の値が渡されたら format 属性自体を消去し、自動的にデフォルト参照に戻るようにする
-        d.data.removeAttribute("format");
-    } else {
-        d.data.setAttribute("format", newformat);
-    }
-}
-
-function get_min_rectW_default(root) {
-    let min_rectW_default = root.data.getAttribute("min_rectW_default");
-    return min_rectW_default;
-}
-function set_min_rectW_default(root, min_rectW_default) {
-    if (min_rectW_default === null || min_rectW_default === undefined || min_rectW_default === "") {
-        // 空の値が渡されたら format 属性自体を消去し、自動的にデフォルト参照に戻るようにする
-        root.data.removeAttribute("min_rectW_default");
-    } else {
-        root.data.setAttribute("min_rectW_default", min_rectW_default);
-    }
-}
-function get_min_rectH_default(root) {
-    let min_rectH_default = root.data.getAttribute("min_rectH_default");
-    return min_rectH_default;
-}
-function set_min_rectH_default(root, min_rectH_default) {
-    if (min_rectH_default === null || min_rectH_default === undefined || min_rectH_default === "") {
-        // 空の値が渡されたら format 属性自体を消去し、自動的にデフォルト参照に戻るようにする
-        root.data.removeAttribute("min_rectH_default");
-    } else {
-        root.data.setAttribute("min_rectH_default", min_rectH_default);
-    }
-}
-function getNodeFontFamilyDefault(root) {
-    return root.data.getAttribute("font-family_default");
-}
-function setNodeFontFamilyDefault(root, font) {
-    return root.data.setAttribute("font-family_default", font);
-}
-function getNodeFontSizeDefault(root) {
-    return root.data.getAttribute("font-size_defalut");
-}
-function setNodeFontSizeDefault(root, font) {
-    return root.data.setAttribute("font-size_defalut", font);
-}
-
 //ノード名制限
 //ノード名に使用不可な文字が使われていないかをチェックする
 //　`"`,`'`,`/`,`*`,`.`,`&`,`<`,`>`,` `（半角空白）は使えない
@@ -455,7 +177,7 @@ function findNodeFromHere(startNode, targetName) {
     if (xml_nodes === null) {
         return null;
     }
-    console.log(xml_nodes);
+    // console.log(xml_nodes);
    // target_nodeのidから、d3.jsのtargetNodeを特定する
     let nodes = [];
     const rootNode = startNode.ancestors ? startNode.ancestors().pop() : startNode;
@@ -465,7 +187,7 @@ function findNodeFromHere(startNode, targetName) {
                 find(d => d.id ===id);
         nodes.push(sameIdNode);
     })
-    console.log(nodes);
+    // console.log(nodes);
     return nodes;
 }
 
@@ -650,7 +372,7 @@ function findXmlNodeFromHere(start_node, xml_doc, targetName) {
 // 起動時、ロード時
 // exprは必ずある前提、disp,valueは無視
 function calcAll(root) {
-    console.log("calcAll start");
+    // console.log("calcAll start");
     root.descendants()
         .forEach(d => {
             d.link_src_set = new Set();
@@ -737,7 +459,7 @@ function calcAll(root) {
     root.descendants()
         .filter(d => getNodeDisp(d) === "")
         .forEach(d => {
-            console.log(getNodeName(d));
+            // console.log(getNodeName(d));
             calcEachNode(d);
         });
     return;
@@ -747,15 +469,15 @@ function calcAll(root) {
 // exprを参考に、value,dispを設定する
 // ループエラーに注意
 function calcEachNode(node) {
-    console.log("start calcEachNode", getNodeName(node));
-    if (getNodeValueNoCalc(node) !== "") {
-        const value = getNodeValueNoCalc(node);
-        console.log("calcEachNode end", value);
+    // console.log("start calcEachNode", getNodeName(node));
+    const value = getNodeValueNoCalc(node);
+    if (value !== "") {
+        // console.log("calcEachNode end", value);
         return value;
     }
     var error_get_multi_value = "";
     // console.log(node);
-    console.log(node);
+    // console.log(node);
     node.link_src_set.clear();
     node.link_path_set.clear();
 
@@ -765,14 +487,14 @@ function calcEachNode(node) {
 
     const rootNode = node.ancestors ? node.ancestors().pop() : node;
     const expr = getNodeExpr(node);
-    console.log("expr", "$"+expr+"$");
+    // console.log("expr", "$"+expr+"$");
     // console.log(typeof expr);
     // if (typeof expr === "string") {
     //     console.log(expr.startsWith("="));
     // }
     let rv;
     if (expr === "" || ! expr.startsWith("=")) {
-        console.log("そのまま");
+        // console.log("そのまま");
         //TODO "～" '～
         let value;
         if (expr.startsWith("'")) {
@@ -788,24 +510,25 @@ function calcEachNode(node) {
         } else {
             if (! Number.isFinite(Number(expr))) {
                 value = "'" + expr;
-            } else {
+                setNodeDisp(node, value.slice(1));
+        } else {
                 value = expr;
+                setNodeDisp(node, value);
             }
             setNodeRepExpr(node, value);
             setNodeValue(node, value);
-            setNodeDisp(node, value);
         }
         rv = value;
     } else {
         // console.log("式");
-        setNodeValue(node, "#LOOP");
+        // setNodeValue(node, "#LOOP");
         let dst = "";
         let index = 1;
         const length = expr.length;
         while (index < length) {
             // console.log(expr);
             if (expr.slice(index).startsWith("'*'")) {
-                console.log("startsWith", expr);
+                // console.log("startsWith", expr);
                 index += 3;
 
                 const children = node.descendants()
@@ -820,7 +543,7 @@ function calcEachNode(node) {
                         setNodeValue(node, err_value);
                         setNodeRepExpr(node, err_value);
                         setNodeDisp(node, err_value);
-                        console.log("get_multi_value return err", err_value);
+                        // console.log("get_multi_value return err", err_value);
                         return err_value;
                     }
                     if (typeof value === "string" && value === "") {
@@ -829,7 +552,7 @@ function calcEachNode(node) {
                         setNodeValue(node, err_value);
                         setNodeRepExpr(node, err_value);
                         setNodeDisp(node, err_value);
-                        console.log("get_multi_value return err", err_value);
+                        // console.log("get_multi_value return err", err_value);
                         return err_value;
                     }
                     node.link_src_set.add(child_node);
@@ -838,7 +561,7 @@ function calcEachNode(node) {
                 });
                 dst += "[" + value_list.join(",") + "]";
             } else if (expr.slice(index).startsWith("'**'")) {
-                console.log("startsWith", expr);
+                // console.log("startsWith", expr);
                 index += 4;
                 setNodeValue(node, "#LOOP");
 
@@ -861,7 +584,7 @@ function calcEachNode(node) {
                         setNodeValue(node, err_value);
                         setNodeRepExpr(node, err_value);
                         setNodeDisp(node, err_value);
-                        console.log("get_multi_value return err", err_value);
+                        // console.log("get_multi_value return err", err_value);
                         return err_value;
                     }
                     if (value.startsWith("'")) {
@@ -885,14 +608,14 @@ function calcEachNode(node) {
                 }
                 index += 1;
                 let value = get_multi_value(node, node_name); // value = "[12,34]"の場合あり
-                console.log(value);
+                // console.log(value);
                 if (value === null) {
                     const err_value = "#ERROR?" + expr.substring(0, index) + error_get_multivalue
                             + expr.substring(index);
                     setNodeValue(node, err_value);
                     setNodeRepExpr(node, err_value);
                     setNodeDisp(node, err_value);
-                    console.log("get_multi_value return err", err_value);
+                    // console.log("get_multi_value return err", err_value);
                     return err_value;
                 }
                 if (value.startsWith("'")) {
@@ -911,7 +634,7 @@ function calcEachNode(node) {
                 index += 1;
             }
         }
-        console.log("dst", dst);
+        // console.log("dst", dst);
         setNodeRepExpr(node, dst);
         let result;
         if (dst.startsWith("'")) {
@@ -927,16 +650,16 @@ function calcEachNode(node) {
         //TODO 参照先ノードが文字列の場合はevaluateしない
         //  1234と'1234と"1234"を区別できるか
 
-        console.log("result", result);
+        // console.log("result", result);
         if (result === undefined) {
             result = dst;
-            console.log("result", result);
+            // console.log("result", result);
         }
-        console.log("result", result);
+        // console.log("result", result);
         setNodeValue(node, result);
         const format = getNodeFormat(node);
         const value = getNodeValue(node);
-        console.log("value", value);
+        // console.log("value", value);
         if (format) {
             let disp = d3.format(format)(value);
             setNodeDisp(node, disp);
@@ -950,20 +673,20 @@ function calcEachNode(node) {
             } else {
                 disp = value;
             }
-            console.log("disp", disp);
+            // console.log("disp", disp);
             setNodeDisp(node, disp);
             // console.log(node.data.disp);
         }
         rv = value;
     }
-    console.log("calcEachNode end", rv);
+    // console.log("calcEachNode end", rv);
     return rv;
 }
 
 function get_multi_value(node, indicator) {
-    console.log("get_multi_value start");
-    console.log(node);
-    console.log("#"+indicator+"#");
+    // console.log("get_multi_value start");
+    // console.log(node);
+    // console.log("#"+indicator+"#");
     var error_get_multi_value = null;
     // var list_get_multi_value = [];
     // const xml_doc = node.data.ownerDocument;
@@ -984,16 +707,16 @@ function get_multi_value(node, indicator) {
         const value = get_multi_value_xpath(node, node, indicator.slice(1));
         return value;
     } else {
-        console.log(node, indicator);
+        // console.log(node, indicator);
         const target_node = findNodeFromHere(node, indicator);
-        console.log("target_node", target_node);
+        // console.log("target_node", target_node);
         if (target_node === null) {
             error_get_multivalue = "#NAME_NOTFOUND?";
             return null;
         } else if (Array.isArray(target_node)) {
             if (target_node.length === 1) {
                 let value = getNodeValue(target_node[0]);
-                console.log("value", value);
+                // console.log("value", value);
                 if (value.startsWith("'")) {
                     // result = "\"" + dst.slice(1) + "\"";
                     // value = value;
@@ -1005,14 +728,14 @@ function get_multi_value(node, indicator) {
                 }
                 node.link_src_set.add(target_node[0]);
                 target_node[0].link_ref_set.add(node);
-                console.log("get_multi_value end", value);
+                // console.log("get_multi_value end", value);
                 return value;
             } else {
                 value_list = [];
                 target_node.forEach(each_node => {
-                    console.log(each_node);
+                    // console.log(each_node);
                     const value = getNodeValue(each_node);
-                    console.log("value", value);
+                    // console.log("value", value);
                     if (value.startsWith("'")) {
                         // result = "\"" + dst.slice(1) + "\"";
                         // value = value;
@@ -1031,7 +754,7 @@ function get_multi_value(node, indicator) {
             }
         } else {
             const value = getNodeValue(target_node);
-            console.log("value", value);
+            // console.log("value", value);
             if (value.startsWith("'")) {
                 // result = "\"" + dst.slice(1) + "\"";
                 // value = value;
@@ -1108,7 +831,7 @@ function get_multi_value_xpath(node, base_node, indicator) {
             index ++;
         } while (index < length);
         str_xpath += "node[child::name='" + str_name +"']";
-        console.log(str_xpath);
+        // console.log(str_xpath);
         if (index === length) {
             break;
         }
@@ -1118,7 +841,7 @@ function get_multi_value_xpath(node, base_node, indicator) {
         error_get_multivalue = "#INVALID_NODE_PATH"
         return null;
     }
-    console.log(str_xpath);
+    // console.log(str_xpath);
     const xml_doc = base_node.data.ownerDocument;
     const xpathResult = xml_doc.evaluate(
         str_xpath, 
@@ -1127,7 +850,7 @@ function get_multi_value_xpath(node, base_node, indicator) {
         XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, 
         null
     );
-    console.log(xpathResult.snapshotLength);
+    // console.log(xpathResult.snapshotLength);
     if (xpathResult.snapshotLength == 0) {
         error_get_multivalue = "#NAME_NOTFOUND";
         return null;
@@ -1139,7 +862,7 @@ function get_multi_value_xpath(node, base_node, indicator) {
     for (const each_element of nodeArray) {
         const id = getElementID(each_element);
         const each_node = root_node.descendants().find(d => d.id === id);
-        console.log("each_node", each_node);
+        // console.log("each_node", each_node);
         if (each_node === undefined) {
             alert("idが見つからない")
         }
@@ -1179,7 +902,7 @@ function get_multi_value_xpath(node, base_node, indicator) {
             link_node.link_path_rev_set.add(node);
         }
     })
-    console.log("value_list", value_list, value_list.length);
+    // console.log("value_list", value_list, value_list.length);
     if (value_list.length === 1) {
         console.log(value_list[0]);
         return value_list[0];
@@ -1323,29 +1046,43 @@ function get_multi_value_list(_node_list, indicator, _index, length) {
 }
 
 
-function deleteNode(node) {
+function deleteNode(node, visited) {
     console.log("deleteNode", getNodeName(node), node);
 
     clear_src(node);
     clear_path(node);
     clear_path_rev(node);
-
+    setNodeRepExpr(node, "");  // 削除されるので、本来は不要
+    setNodeDisp(node, "");
+    setNodeValue(node, "");
+    clear_ref(node, visited);
+    console.log(node);
+    if (node.children) {
+        console.log(node.children);
+        node.children.forEach(child => deleteNode(child, visited));
+    }
     // 削除予定のノード（子孫ノードを含む）を参照しているノードの計算結果をクリアする
-    let visited = new Set();
-    node.descendants()
-        .forEach(child => clear_ref(child, visited));
-    node.descendants()
-        .forEach(child => {
-            console.log(child, child.link_ref_set);
-            child.link_ref_set.forEach(d => {d.link_src_set.delete(child);});
-            child.link_path_rev_set.forEach(d => {
-                setNodeRepExpr(d, "");
-                setNodeValue(d, "");
-                setNodeDisp(d, "");
-                d.link_path_set.delete(child);
+    // let visited = new Set();
+    // node.descendants()
+    //     .forEach(d => function(d) {
+    //             setNodeRepExpr(d, "");  // 削除されるので、本来は不要
+    //             setNodeDisp(d, "");
+    //             setNodeValue(d, "");
+    //             clear_ref(d, visited);
+    //             d.link_ref_set.clear(); //　削除されるので本来は不要
+    //             });
+    // node.descendants()
+    //     .forEach(child => {
+    //         console.log(child, child.link_ref_set);
+    //         child.link_ref_set.forEach(d => {d.link_src_set.delete(child);});
+    //         child.link_path_rev_set.forEach(d => {
+    //             setNodeRepExpr(d, "");
+    //             setNodeValue(d, "");
+    //             setNodeDisp(d, "");
+    //             d.link_path_set.delete(child);
 
-            })
-        });
+    //         })
+    //     });
 
     // エラーノード　参照ノード名の重複が解消する可能性がある
     const rootNode = node.ancestors ? node.ancestors().pop() : node;
@@ -1388,8 +1125,8 @@ function deleteNode(node) {
     // console.log("AAAAAAAAA");
     // print_root(rootNode);
     // console.log("BBBBBBBB");
-    // 4. 未計算ノードを再計算
-    alert("33333");
+    // // 4. 未計算ノードを再計算
+    // alert("33333");
 
     rootNode.descendants()
         .filter(d => d.data && getNodeValueNoCalc(d) === "")
@@ -1402,57 +1139,62 @@ function deleteNode(node) {
 
 //ノード名を変更する
 function renameNodeName(node, new_name) {
-    const old_name = node.data.name;
+    const old_name = getNodeName(node);
     const parent_node = node.parent;
-    const inv_name = isValidNodeName(new_name);
-    if (! inv_name) {
-        alert(`ノード名「${new_name}」は使えない文字を含んでいます。`);
-        return false;
-    }
     const checkDuplicate = checkDuplicateNodeName(parent_node, new_name);
     if (! checkDuplicate) {
         alert(`ノード名「${new_name}」は重複しています。`);
         return false;
     }
-    node.data.name = new_name;
-
-    // 以下のノードのvalueをクリアしてから、再計算
-    //  エラーノード
-    // 　このノードを参照しているノード、さらにそのノードを参照しているノード
-    // 　新ノード名と同一のノード名のノードを参照しているノード、さらに……
-    const rootNode = node.ancestors ? node.ancestors().pop() : node;
-    // 参照先のノードがなくてエラーや、重複ノードでエラーになっていた
-    // ノードがエラーでなくなるかもしれない
-    rootNode.descendants()
-        .filter(d => (!d.data.value ||
-                (typeof d.data.value === "string") && (d.data.value.startsWith("#"))))
-        .forEach(d => {
-            d.data.disp = null;
-            d.data.value = null;
-        });
-
-    // ノード名が変わるの参照先でなくなる
-    // 別のノードが参照先になることが考えられる
-    console.log(node.link_ref_set);
-    if (node.link_ref_set.size !== 0) {
-        rootNode.descendants()
-                .filter(d => node.link_ref_set.has(d))
-                .forEach(d => {
-                    clear_ref(d);
-                    d.link_src_set.clear();
-                });
-        node.link_ref_set.clear();
-    }
-
+    setNodeName(node, new_name);
+    let visited = new Set();
+    node.link_ref_set.forEach(d => {
+        setNodeRepExpr(d, "");
+        setNodeValue(d, "");
+        setNodeDistp(d, "");
+        clear_ref(d, visited);
+    })
+    node.link_ref_set.clear();
+    clear_path_rev(node);
     const sameNodes = rootNode.descendants()
-        .filter(d => d.data.name == new_name)
+        .filter(d => getNodeName(d) === new_name)
         .forEach(d => {
-            clear_ref(d);
-            d.link_src_set.clear();
+            clear_ref(d, visited);
+            clear_path_rev(d);
         });
-
+    const rootNode = node.ancestors ? node.ancestors().pop() : node;
     rootNode.descendants()
-        .filter(d => (!d.data.value || d.data.value === null))
+        .filter(d => {
+                const value = getNodeValue(d);
+                return (typeof getNodeValue(d) === "string") && (getNodeValue(d).startsWith("#"));
+        })
+        .forEach(d => {
+            console.log(getNodeName(d));
+            setNodeDisp(d, "");
+            setNodeRepExpr(d, "");
+            setNodeValue(d, "");
+        });
+    // rootNode.descendants().forEach(d => {
+    //     const value = getNodeValue(d);
+
+    //     if (!value || (typeof value === "string" && value.startsWith("#"))) {
+    //         console.log(getNodeName(d));
+    //         setNodeDisp(d, "");
+    //         setNodeRepExpr(d, "");
+    //         setNodeValue(d, "");
+    //     }
+    //     )
+    //     .forEach(d => {
+    //         console.log(getNodeName(d));
+    //         setNodeDisp(d, "");
+    //         setNodeRepExpr(d, "");
+    //         setNodeValue(d, "");
+    //     });
+    rootNode.descendants()
+        .filter(d => {
+            const value = getNodeValue(d);
+            return value === "";
+        })
         .forEach(d => {
             calcEachNode(d);
         });
@@ -1461,96 +1203,77 @@ function renameNodeName(node, new_name) {
 
 
 //ノード名、式を変更する
-//変更したいない場合もある
+//変更していない場合もある
 function rename_reexpr_Node(node, new_name, new_expr ) {
-    if (node.data.expr === new_expr) {
-        if (node.data.name === new_name) {
-            return false;
-        }
-        const rv = renameNodeName(node, new_name);
-        return rv;
-    }
     const rootNode = node.ancestors ? node.ancestors().pop() : node;
-    if (node.data.name === new_name) {
+    if (getNodeName(node) === new_name) {
         //式のみの変更
-        node.data.expr = new_expr;
-        node.data.value = null;
-        node.data.disp = null;
-        if (node.link_ref_set.size !== 0) {
-            rootNode.descendants()
-                    .filter(d => node.link_ref_set.has(d))
-                    .forEach(d => {
-                        clear_ref(d);
-                        d.link_src_set.clear();
-                    });
-            node.link_ref_set.clear();
-        }
+        console.log("式のみ");
+        setNodeExpr(node, new_expr);
+        setNodeRepExpr(node, "");
+        setNodeValue(node, "");
+        setNodeDisp(node, "");
+        let visited = new Set();
+        clear_ref(node, visited);
     } else {
         //両方の変更
-        const old_name = node.data.name;
         const parent_node = node.parent;
-        const inv_name = isValidNodeName(new_name);
-        if (! inv_name) {
-            alert(`ノード名「${new_name}」は使えない文字を含んでいます。`);
-            return false;
-        }
         const checkDuplicate = checkDuplicateNodeName(parent_node, new_name);
-        // const check_name = parent_node.children.find(child =>
-        //         child.data.name === new_name);
-        // if (check_name !== undefined) {
         if (! checkDuplicate) {
             alert(`ノード名「${new_name}」は重複しています。`);
             return false;
         }
-        node.data.name = new_name;
+        setNodeName(node, new_name);
+        let visited = new Set();
+        node.link_ref_set.forEach(d => {
+            setNodeRepExpr(d, "");
+            setNodeValue(d, "");
+            setNodeDisp(d, "");
+            clear_ref(d, visited);
+        })
+        node.link_ref_set.clear();
+        clear_path_rev(node);
+        const sameNodes = rootNode.descendants()
+            .filter(d => getNodeName(d) === new_name)
+            .forEach(d => {
+                clear_ref(d, visited);
+                clear_path_rev(d);
+            });
 
-        node.data.expr = new_expr;
-        node.data.value = null;
-        node.data.disp = null;
-
-        // 以下のノードのvalueをクリアしてから、再計算
-        //  エラーノード
-        // 　このノードを参照しているノード、さらにそのノードを参照しているノード
-        // 　新ノード名と同一のノード名のノードを参照しているノード、さらに……
+        setNodeExpr(node, new_expr);
 
         // 参照先のノードがなくてエラーや、重複ノードでエラーになっていた
         // ノードがエラーでなくなるかもしれない
         rootNode.descendants()
-            .filter(d => (!d.data.value ||
-                    (typeof d.data.value === "string") && (d.data.value.startsWith("#"))))
+            .filter(d => {
+                    const value = getNodeValue(d);
+                    return (typeof getNodeValue(d) === "string") && (getNodeValue(d).startsWith("#"));
+            })
             .forEach(d => {
-                d.data.disp = null;
-                d.data.value = null;
+                console.log(getNodeName(d));
+                setNodeDisp(d, "");
+                setNodeRepExpr(d, "");
+                setNodeValue(d, "");
             });
 
-        // ノード名が変わるの参照先でなくなる
-        // 別のノードが参照先になることが考えられる
-        console.log(node.link_ref_set);
-        if (node.link_ref_set.size !== 0) {
-            rootNode.descendants()
-                    .filter(d => node.link_ref_set.has(d))
-                    .forEach(d => {
-                        clear_ref(d);
-                        d.link_src_set.clear();
-                    });
-            node.link_ref_set.clear();
-        }
-
-        const sameNodes = rootNode.descendants()
-            .filter(d => d.data.name == new_name)
-            .forEach(d => {
-                clear_ref(d);
-                d.link_src_set.clear();
-            });
+        // console.log(node.link_ref_set);
+        // if (node.link_ref_set.size !== 0) {
+        //     rootNode.descendants()
+        //             .filter(d => node.link_ref_set.has(d))
+        //             .forEach(d => {
+        //                 clear_ref(d);
+        //                 d.link_src_set.clear();
+        //             });
+        //     node.link_ref_set.clear();
+        // }
     }
-
     rootNode.descendants()
-        .filter(d => (!d.data.value || d.data.value === null))
+        .filter(d => (getNodeValue(d) === ""))
         .forEach(d => {
             calcEachNode(d);
         });
     return true;
-  }
+}
 
 
 //新しいノードを作る
@@ -1585,22 +1308,34 @@ function new_Node(node, new_name, new_expr ) {
 
     // 参照先のノードがなくてエラーや、重複ノードでエラーになっていた
     // ノードがエラーでなくなるかもしれない
-    rootNode.descendants()
-        .filter(d => function(d) {
-                const value = getNodeValue(d);
-                return value.startsWith("#"); })
+   rootNode.descendants()
+        .filter(d => {
+            const value = getNodeValueNoCalc(d);
+            return typeof value === "string" && value.startsWith("#");
+        })
         .forEach(d => {
             setNodeDisp(d, "");
             setNodeValue(d, "");
             setNodeRepExpr(d, "");
         });
 
+
+    // rootNode.descendants()
+    //     .filter(d => function(d) {
+    //             const value = getNodeValue(d);
+    //             return value.startsWith("#"); })
+        // .forEach(d => {
+        //     setNodeDisp(d, "");
+        //     setNodeValue(d, "");
+        //     setNodeRepExpr(d, "");
+        // });
+
     const sameNodes = rootNode.descendants()
-        .filter(d => d.data.name === new_name);
+        .filter(d => getNodeName(d) === new_name);
     sameNodes.forEach(d => {
         let visited = new Set();
         clear_ref(d, visited);
-        clear_src(d);
+        // clear_src(d);
     })
     sameNodes.forEach(d => {
         clear_path_rev(d);
@@ -1616,118 +1351,49 @@ function new_Node(node, new_name, new_expr ) {
   }
 
 
-//そのノードnodeが参照しているノード(node.link_src_setから辿る）
-//のlink_ref_setからnodeを削除する
-//nodeのlink_src_setをクリアする。
-//  ノードの削除、ノードの式の変更などで使う
-function clear_src(node) {
-    node.link_src_set.forEach(d => d.link_ref_set.delete(node))
-    node.link_src_set.clear();
-}
-
-//そのノードnodeがノードパス指定でパス参照しているノード(node.link_path_setから辿る）
-//のlink_path_rev_setからnodeを削除する
-//nodeのlink_path_setをクリアする。
-//  ノードの削除、ノードの式の変更などで使う
-function clear_path(node) {
-    node.link_path_set.forEach(d => d.link_path_rev_set.delete(node))
-    node.link_path_set.clear();
-}
-
-
-//そのノードとそのノードを参照しているノード、さらに…ノードの
-//valueをクリアし、
-function clear_ref(node, visited = new Set()) {
-    if (!node || visited.has(node)) {
-        return;
-    }
-    visited.add(node);
-
-    setNodeRepExpr(node, "");
-    setNodeDisp(node, "");
-    setNodeValue(node, "");
-
-    for (const refNode of node.link_ref_set ?? []) {
-        clear_ref(refNode, visited);
-    }
-}
-
-function clear_path_rev(node) {
-    node.link_path_rev_set.forEach(
-        d => {
-            setNodeRepExpr(d, "");
-            setNodeDisp(d, "");
-            setNodeValue(d, "");
-            d.link_path_set.delete(node);
-            d.link_path_set.forEach(dd => dd.link_path_rev_set.delete(d));
-            d.link_path_set.clear();
-        }
-    )
-}
-
-// function clear_ref(node) {
-//     setNodeRepExpr(node, null);
-//     setNodeDisp(node, null);
-//     setNodeValue(node, null);
-//     // if (node.link_ref_set.size !== 0) {
-//     //     // TODO 意味なく、効率が悪そう
-//     //     root.descendants()
-//     //         .filter(d => node.link_ref_set.has(d))
-//     //         .forEach(d => clear_ref(d));
-//     // }
-//     for (const refNode of node.link_ref_set) {
-//         clear_ref(refNode);
-//     }
-//     //   node.link_ref_set.clear();
-//     return;
-// }
-
 
 //移動（ドロップ）したノード（子孫ノードを含む）が別のノードの子ノードとなった
 function changeParent(node, new_parent) {
     // 親子間の付替えは、既に終わっている前提
     const rootNode = node.ancestors ? node.ancestors().pop() : node;
+
+    let visited = new Set();
+    node.descendants().forEach(d => {
+        setNodeRepExpr(d, "");
+        setNodeValue(d, "");
+        setNodeDisp(d, "");
+
+        clear_src(d);
+        clear_path(d);
+        clear_ref(d, visited);
+        clear_path_rev(d);
+    })
+
+    const name = getNodeName(node);
+    // 移動したノードのノード名と同じノード名を参照していた他のノードの計算結果のクリア
+    const sameNodes = rootNode.descendants()
+        .filter(d => getNodeName(d) === name);
+    sameNodes.forEach(d => {
+        // let visited = new Set();
+        clear_ref(d, visited);
+        clear_path_rev(d);
+    })
+
     // 参照先のノードがなくてエラーや、重複ノードでエラーになっていた
     // ノードがエラーでなくなるかもしれない
     rootNode.descendants()
-        .filter(d => (!d.data.value ||
-                (typeof d.data.value === "string") && (d.data.value.startsWith("#"))))
+        .filter(d => {
+            value = getNodeValue(d);
+            return (typeof value === "string") && value.startsWith("#");})
         .forEach(d => {
-            d.data.disp = null;
-            d.data.value = null;
+            setNodeRepExpr(d, "");
+            setNodeValue(d, "");
+            setNodeDisp(d, "");
         });
-    // 移動したノード（子孫ノードを含む。以下同じ。）の計算結果のクリア
-    node.descendants()
-            .filter(d => (typeof d.data.expr === "string") && (d.data.expr.startsWith("=")))
-            .forEach(d => {
-                d.data.disp = null;
-                d.data.value = null;
-            });
-    // 移動したノードを参照していた他のノード（さらに参照を含む）の計算結果のクリア
-    node.descendants()
-            .forEach(d => {
-                if (d.link_ref_set.size !== 0) {
-                    rootNode.descendants()
-                            .filter(d2 => node.link_ref_set.has(d2))
-                            .forEach(d2 => {
-                                clear_ref(d2);
-                                d2.link_src_set.clear();
-                            });
-                }
-                d.link_ref_set.clear();
-            });
 
-    // 移動したノードのノード名と同じノード名を参照していた他のノードの計算結果のクリア
-    const sameNodes = rootNode.descendants()
-        .filter(d => d.data.name == node.data.name)
-        .forEach(d => {
-            clear_ref(d);
-            d.link_src_set.clear();
-        });
-    
-    // 計算結果をクリアしたノードの再計算
+        // 計算結果をクリアしたノードの再計算
     rootNode.descendants()
-        .filter(d => (!d.data.value || d.data.value === null))
+        .filter(d => (getNodeValue(d) === ""))
         .forEach(d => {
             calcEachNode(d);
         });

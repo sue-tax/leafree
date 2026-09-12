@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <!-- https://wizardace.com/d3-collapsible-tree/ -->
+
 <html>
 
 <head>
@@ -34,6 +35,18 @@
         stroke-width: 2.0px;
     }
 
+    html, body {
+        background: transparent;
+    }
+
+    #tree-area {
+        background: transparent;
+    }
+
+    svg {
+    background: transparent;
+    }
+
   </style>
 </head>
 
@@ -59,6 +72,7 @@
     <script src="https://unpkg.com/mathjs"></script>
 
     <script src="leafX_tree.js"></script>
+    <script src="leafX_node.js"></script>
 
 <script>
 
@@ -454,21 +468,17 @@ var drag = d3.drag()
             }
         }
 
-        // ★ 条件分岐: 他のノードにドロップされた場合のみ「元の位置」に戻す
-        //    うまく、機能していないようだ
         if (isDroppedOnNode) {
             d.descendants().forEach(function(node) {
                 var key = node.id; // || node.data.id || JSON.stringify(node.data.name);
                 var original = originCoordinates[key];
-                // console.log(key, original);
+                console.log(key, original);
                 if (original) {
-                    // console.log(node.x, node.y, node.data.customX, node.data.customY);
+                    console.log(node.x, node.y, getNodeCustomX(node), getNodeCustomY(node));
                     node.x = original.x;
                     node.y = original.y;
-                    setNodeCustomX(node, node.x);
-                    setNodeCustomY(node, node.y);
-                    // node.data.customX = node.x;
-                    // node.data.customY = node.y;
+                    setNodeCustomX(node, original.customX?? node.x);
+                    setNodeCustomY(node, original.customY?? node.y);
                 }
             });
         } else {
@@ -607,22 +617,22 @@ update(root, data_relation);
 
 
 function cloneTreeData(data) {
-    return structuredClone(data);
+    return data.cloneNode(true);    //structuredClone(data);
 }
 
 function reassignIds(node) {
-    node.id = ++nodeCounter;
-
-    if (node.children && Array.isArray(node.children)) {
-        node.children.forEach(reassignIds);
-    }
+    setElementID(node, ++nodeCounter);
+    node.id = getElementID(node);
+    Array.from(node.children)
+        .filter(child => child.tagName === "node")
+        .forEach(reassignIds);
     return node;
 }
 
 function copy_node(d) {
     clipboardNode = cloneTreeData(d.data);
     clipboardParentNode = d.parent;
-    console.log("copied", clipboardNode);
+    // console.log("copied", clipboardNode);
 }
 
 function paste_node(d) {
@@ -630,73 +640,62 @@ function paste_node(d) {
     const old_parentX = clipboardParentNode.x;
     const old_parentY = clipboardParentNode.y;
 
-    console.log(clipboardNode);
-    const newNode = reassignIds(cloneTreeData(clipboardNode));
-    console.log(newNode);
-    let name = newNode.name;
+    // console.log(clipboardNode);
+    // const newNode = reassignIds(cloneTreeData(clipboardNode));
+    const newElement = reassignIds(cloneTreeData(clipboardNode));
+    // console.log(newElement);
+    let name = getElementName(newElement);
 
-    if (!d.data.children) {
-        d.data.children = [];
-    }
     const flag = checkDuplicateNodeName(d, name);
     if (! flag) {
-        name_plus = renameDuplicateNodeName(parent, name);
-        newNode.name = name_plus;
+        name_plus = renameDuplicateNodeName(d, name);
+        setNodeName(newNode, name_plus);
     }
-    d.data.children.push(newNode);
 
-    // const rootID = root.id;
+    // new_Node(node, new_name, new_expr )
+
+    const parentElement = d.data;
+    parentElement.appendChild(newElement);
     const parentID = d.id;
-    root = d3.hierarchy(root.data);
+
+    const rootElement = root.data;
+    const doc = rootElement.ownerDocument;
+    root = d3.hierarchy(doc.documentElement, xmlNode => {
+        return Array.from(xmlNode.children).filter(child => child.tagName === "node");
+    });
+
     tree(root);
     root.descendants()
-        .forEach(d => {d.id = d.data.id;})
+        .forEach(d => {d.id = getNodeID(d);})
     const newParentNode = root.descendants().find( function(node) { return node.id === parentID; });
-    console.log(newParentNode);
-    const new_node = newParentNode.children.find( function(node) { return node.data.name === name; });
-    console.log(new_node);
+    // console.log(newParentNode);
+    const new_node = newParentNode.children.find( function(node) { return getNodeName(node) === name; });
+    // console.log(new_node);
 
     const parentX = newParentNode.x;
     const parentY = newParentNode.y;
-    console.log(old_parentX, old_parentY, parentX, parentY);
-    console.log("new_node", new_node);
+    // console.log(old_parentX, old_parentY, parentX, parentY);
+    // console.log("new_node", new_node);
     print_root(root);
     const children = new_node.descendants();
     children.forEach(node => {
+            setNodeRepExpr(node, "");
+            setNodeValue(node, "");
+            setNodeDisp(node, "");
             node.link_ref_set = new Set();
             node.link_src_set = new Set();
-
-            node.data.value = null;
-            node.data.disp = null;
+            node.link_path_set = new Set();
+            node.link_path_rev_set = new Set();
+            // new_Node(node, getNodeName(node), getNodeExpr(node));
         });
     children.forEach(node => {
              root.descendants()
-    //             .filter(d => (!d.data.value ||
-    //                     (typeof d.data.value === "string") && (d.data.value.startsWith("#"))))
-    //             .forEach(d => {
-    //                 d.data.disp = null;
-    //                 d.data.value = null;
-    //             });
-    //         const sameNodes = root.descendants()
-    //             .filter(d => d.data.name == name)
-    //             .forEach(d => {
-    //                 clear_ref(d);
-    //                 d.link_src_set.clear();
-    //             });
-    //         root.descendants()
-    //             .filter(d => (!d.data.value || d.data.value === null))
-    //             .forEach(d => {
-    //                 calcEachNode(d);
-    //             });
-
-             //customがあれば、再計算
-             if (node.data.customX && node.data.customX !== undefined) {
-                 node.data.customX +=  parentX - old_parentX;
-                 node.data.customY +=  parentY - old_parentY;
+             if (getNodeCustomX(node) !== undefined) {
+                setNodeCustomX(node, getNodeCustomX(node) +  parentX - old_parentX);
+                setNodeCustomY(node, getNodeCustomY(node) +   parentY - old_parentY);
              }
          });
     calcAll(root);      //TODO
-
 
     setNode(root);
     data_relation = [];
@@ -864,25 +863,18 @@ function update(root, data_relation) {
     nodeEnter.on("click", function(clickedNode) {
         if (!activeExprInput) return;
         if (editingNodeId === clickedNode.id) return;
-
-        console.log("click");
-
+        //console.log("click");
         d3.event.stopPropagation();
-
-        console.log(clickedNode);
+        //console.log(clickedNode);
         const insertText = getNodeName(clickedNode);
         const input = activeExprInput;
-
         const start = input.selectionStart ?? input.value.length;
         const end = input.selectionEnd ?? input.value.length;
-
         input.value =
             input.value.slice(0, start) +
             "'" + insertText + "'" +
             input.value.slice(end);
-
-        console.log(input.value);
-
+        //console.log(input.value);
         const newPos = start + insertText.length + 2;
         input.focus();
         input.setSelectionRange(newPos, newPos);
@@ -941,20 +933,6 @@ function update(root, data_relation) {
         .attr("dy", "-10")      // 上辺から?px上に浮かせる
         .text(function(d) { return getNodeName(d); })
         .style("fill-opacity", 1e-6);
-
-
-    // nodeEnter.append("text")
-    //     .attr("class", "node-disp")
-        // .attr("x", function(d) { return d.rectW; /*?d.rectW:node_size_x;*/ })
-        // ★ 右詰め（テキストの末尾がX座標に揃う）にする
-        // .attr("text-anchor", "end")
-        // ★ 右端にぴったりくっつきすぎるのを防ぐため、内側に少しマージン（例: 5px）を入れる
-        // .attr("dx", "-5")
-        // 四角形の垂直中央に合わせるためのベースライン調整（フォントサイズに合わせて微調整してください）
-        // .attr("dy", "0.35em") 
-        // .attr("y", 0)         // 四角形の垂直中央（rectのyが -rectH/2 なので、y=0 が中央になります）
-        // .text(function(d) { return getNodeDisp(d); })
-        // .style("fill-opacity", 1e-6);
 
     nodeEnter.append("text")
         .attr("class", "node-expr")
@@ -1193,7 +1171,8 @@ function delete_node(node) {
             return;
         }
     }
-    deleteNode(node);
+    let visited = new Set();
+    deleteNode(node, visited);
     console.log(node);
     console.log(node.parent);
     cleanupEmptyChildren(node.parent);
@@ -1331,7 +1310,7 @@ function addChildNode(parentNode, name, expr) {
     console.log("set_expr", set_expr);
     console.log(typeof set_expr);
 
-    print_root(root);
+    // print_root(root);
 
     const parentElement = parentNode.data;
     const doc = parentElement.ownerDocument;
@@ -1352,7 +1331,7 @@ function addChildNode(parentNode, name, expr) {
     setElementID(newNodeElement, ++nodeCounter);
 
     const parentID = parentNode.id;
-    console.log(parentID);
+    // console.log(parentID);
 
     root = d3.hierarchy(doc.documentElement, xmlNode => {
         return Array.from(xmlNode.children).filter(child => child.tagName === "node");
@@ -1371,21 +1350,21 @@ function addChildNode(parentNode, name, expr) {
     });
 
     const newParentNode = root.descendants().find(node => node.id === parentID);
-    console.log(newParentNode);
+    // console.log(newParentNode);
     const newNode = newParentNode.children.find(node => node.data === newNodeElement);
 
-    console.log("before setNode");
+    // console.log("before setNode");
     setNode(root);
-    console.log(root);
-    console.log("before new_Node");
+    // console.log(root);
+    // console.log("before new_Node");
     new_Node(newNode, name, set_expr);
     // setNode(root);
  
-    print_root(root);
+    // print_root(root);
 
     // treeLayout(root);
 
-    calcAll(root);
+    // calcAll(root);
 
     print_root(root);
 
@@ -1445,20 +1424,35 @@ function openNewRootChildEditor(posX, posY) {
         .text("OK")
         .on("click", function() {
             const el = editor.node();
-            const name = el.querySelector(".new-name").value.trim();
-            const expr = el.querySelector(".new-expr").value.trim();
-
-            if (!name) return;
-            let set_expr = expr;
-            if (typeof expr === "string") {
-                if (expr.trim() !== "") {
-                    if (Number.isFinite(Number(expr))) {
-                        set_expr = Number(expr);
-                    }
+            let name = el.querySelector(".new-name").value.trim();
+            let expr = el.querySelector(".new-expr").value.trim();
+            if (!name || name.trim() === "") {
+                const result = confirm("ノード名の入力がないので、ノード名を「_」にしますか？");
+                if (result) {
+                    name = "_";
+                } else {
+                    return;
                 }
             }
+            if (!expr) {
+                const result = confirm('内容の入力がないので、内容を「""」にしますか？');
+                if (result) {
+                    expr = '""';
+                } else {
+                    return;
+                }
 
-            addChildToRootAtPosition(name, set_expr, posX, posY);
+            }
+            // let set_expr = expr;
+            // if (typeof expr === "string") {
+            //     if (expr.trim() !== "") {
+            //         if (Number.isFinite(Number(expr))) {
+            //             set_expr = Number(expr);
+            //         }
+            //     }
+            // }
+
+            addChildToRootAtPosition(name, expr, posX, posY);
             g.selectAll(".node-editor").remove();
         });
 
@@ -1476,46 +1470,64 @@ function openNewRootChildEditor(posX, posY) {
 }
 
 function addChildToRootAtPosition(name, expr, posX, posY) {
-    if (!root.data.children) {
-        root.data.children = [];
-    } else {
-        const flag = checkDuplicateNodeName(parentNode, name);
-        if (! flag) {
-            alert("ノード名が重複しています");
-            return;
-        } 
+    console.log("addChildToRootAtPosition", posX, posY);
+    const isValid = isValidNodeName(name);
+    if (! isValid) {
+        alert("不適切なノード名です")
+        return;
     }
+    const flag = checkDuplicateNodeName(root, name);
+    if (! flag) {
+        alert("ノード名が重複しています");
+        return;
+    } 
     let set_expr = expr;
     if (typeof expr === "string") {
         if (expr.trim() !== "") {
             if (Number.isFinite(Number(expr))) {
                 set_expr = Number(expr);
+            // } else {
+            //     if 
+            // }
             }
         }
     }
     console.log("set_expr", set_expr);
     console.log(typeof set_expr);
 
-    const newData = {
-        name: name,
-        expr: set_expr,
-        children: [],
-        id: ++nodeCounter,
-        customX: posY,
-        customY: posX
-    };
+    const rootElement = root.data;
+    const doc = rootElement.ownerDocument;
 
-    root.data.children.push(newData);
-    const rootID = root.id;
-    root = d3.hierarchy(root.data);
-    root.descendants()
-        .forEach(d => {d.id = d.data.id;})
-    // const newParentNode = root.descendants().find( function(node) { return node.id === parentID; });
-    const newNode = root.children.find( function(node) { return node.data.name === name; });
+    const newNodeElement = doc.createElement("node");
+    const nameElement = doc.createElement("name");
+    const exprElement = doc.createElement("expr");
+
+    nameElement.textContent = name;
+    exprElement.textContent = set_expr;
+
+    newNodeElement.appendChild(nameElement);
+    newNodeElement.appendChild(exprElement);
+    rootElement.appendChild(newNodeElement);
+    setElementID(newNodeElement, ++nodeCounter);
+
+    const rootID = rootElement.id;
+
+    root = d3.hierarchy(doc.documentElement, xmlNode => {
+        return Array.from(xmlNode.children).filter(child => child.tagName === "node");
+    });
+
+    root.descendants().forEach(d => {
+        d.id = getNodeID(d); //d.data.querySelector(':scope > id');
+    });
+
+    const newNode = root.children.find(node => node.data === newNodeElement);
+    console.log(newNode, posX);
+    setNodeCustomX(newNode, posX);
+    setNodeCustomY(newNode, posY);
+    console.log(getNodeName(newNode), getNodeCustomX(newNode));
+
     setNode(root);
-
     new_Node(newNode, name, set_expr);
-    setNode(root);
     data_relation = [];
     create_relation();
     update(root, data_relation);
@@ -1524,15 +1536,22 @@ function addChildToRootAtPosition(name, expr, posX, posY) {
 function change_node(node) {
     openNodeEditor(node);
 }
+
+//ノード名とノードの内容を入力して、変更します
 function openNodeEditor(d) {
     g.selectAll(".node-editor").remove();
     activeExprInput = null;
     editingNodeId = d.id;
 
-    const w = Math.max(d.rectW ? d.rectW : node_size_x, 180);
-    const h = 70;
+    const w = Math.max((getNodeRectW(d)===undefined)?0:getNodeRectW(d), 220);
+    // console.log(getNodeRectH(d));
+    const h = Math.max((getNodeRectH(d)===undefined)?0:getNodeRectH(d), 90);
     const x = nodePosX(d);
+    // console.log(nodePosY(d));
+    // console.log(h);
+    // console.log(nodePosY(d)-h/2);
     const y = nodePosY(d) - h / 2;
+    // console.log("y", y);
 
     const editor = g.append("foreignObject")
         .attr("class", "node-editor")
@@ -1552,18 +1571,21 @@ function openNodeEditor(d) {
     box.append("xhtml:input")
         .attr("class", "edit-name")
         .style("width", "100%")
-        .property("value", d.data.name || "");
+        .property("value", getNodeName(d));
 
     box.append("xhtml:input")
         .attr("class", "edit-expr")
         .style("width", "100%")
         .style("margin-top", "4px")
-        .property("value", d.data.expr || "")
+        .property("value", getNodeExpr(d))
         .each(function() {
             activeExprInput = this;
         });
-
-    box.append("xhtml:button")
+    
+    const row = box.append("xhtml:div")
+        .style("margin-top", "6px")
+        .style("text-align", "right");
+    row.append("xhtml:button")
         .text("OK")
         .on("click", function() {
             const el = editor.node();
@@ -1573,16 +1595,21 @@ function openNodeEditor(d) {
             if (typeof new_expr === "string") {
                 if (new_expr.trim() !== "") {
                     if (Number.isFinite(Number(new_expr))) {
-                        set_expr = Number(new_expr);
+                        set_expr = Number(new_expr);    // TODO 必要か、要検討
                     }
                 }
             }
             console.log(new_name, set_expr);
+
+            // TODO rename only
+
+
             const rv = rename_reexpr_Node(d, new_name, set_expr ) 
             if (! rv) {
                 console.log("rv", rv);
                 return;
-            }            
+            }
+            console.log(d);
             // calcAll(root);
             setNode(root);
             data_relation = [];
@@ -1593,19 +1620,26 @@ function openNodeEditor(d) {
             editingNodeId = null;
             g.selectAll(".node-editor").remove();
         });
+    row.append("xhtml:button")
+        .text("Cancel")
+        .style("margin-left", "4px")
+        .on("click", function() {
+            g.selectAll(".node-editor").remove();
+        });
+
 }
 
 function resize() {
     const nodes = root.descendants();
     const xExtent = d3.extent(nodes, d => {const customX = getNodeCustomX(d); return customX?customX:d.x}); // [最左のx, 最右のx]
     const yExtent = d3.extent(nodes, d => {const customY = getNodeCustomY(d); return customY?customY:d.y}); // [最上のy, 最下のy]（最上は通常0）
-    console.log(xExtent, yExtent);
+    // console.log(xExtent, yExtent);
     // 3. 余白（マージン）の設定
     const margin = { top: 40, right: 40, bottom: 40, left: 40 };
 
     const svgWidth = Math.max((yExtent[1]) + margin.left + margin.right + node_size_x*2,800);
     const svgHeight = Math.max((xExtent[1]) + margin.top + margin.bottom + node_size_y*5,900);
-    console.log(svgWidth, svgHeight);
+    // console.log(svgWidth, svgHeight);
 
     // 5. SVG要素にサイズを適用
     d3.select("svg")
@@ -1690,7 +1724,7 @@ async function loadXMLToData() {
 
 
 function setNode(root) {
-    console.log("start setNode");
+    // console.log("start setNode");
     root.descendants()
         .forEach( d => {
             // console.log(getNodeName(d));
@@ -1735,6 +1769,7 @@ function getTextSize(text, font_family, font_size) {
 
 function nodePosX(d) {
     const customY = getNodeCustomY(d);
+    // console.log(d.y);
     return customY !== undefined ? customY : d.y;
 }
 
