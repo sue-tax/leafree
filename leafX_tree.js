@@ -657,30 +657,62 @@ function calcEachNode(node) {
         }
         // console.log("result", result);
         setNodeValue(node, result);
-        const format = getNodeFormat(node);
-        const value = getNodeValue(node);
+        
+        create_disp(node);
+        // const format = getNodeFormat(node);
+        // const value = getNodeValue(node);
+
         // console.log("value", value);
-        if (format) {
-            let disp = d3.format(format)(value);
-            setNodeDisp(node, disp);
-        } else {
-            // console.log("calcEachNode", node.data.name, node.data.value);
-            let disp;
-            if (Number.isInteger(value)) {
-                disp = d3.format(",")(value);
-            } else if (typeof value === 'number' ) {
-                disp = d3.format(",.2f")(value);
-            } else {
-                disp = value;
-            }
-            // console.log("disp", disp);
-            setNodeDisp(node, disp);
-            // console.log(node.data.disp);
-        }
+        // console.log("format", format);
+
+        // if (format) {
+        //     let disp = d3.format(format)(value);
+        //     console.log(disp)
+        //     setNodeDisp(node, disp);
+        // } else {
+        //     // console.log("calcEachNode", node.data.name, node.data.value);
+        //     let disp;
+        //     if (Number.isInteger(value)) {
+        //         disp = d3.format(",")(value);
+        //     } else if (typeof value === 'number' ) {
+        //         disp = d3.format(",.2f")(value);
+        //     } else {
+        //         disp = value;
+        //     }
+        //     // console.log("disp", disp);
+        //     setNodeDisp(node, disp);
+        //     // console.log(node.data.disp);
+        // }
         rv = value;
     }
     // console.log("calcEachNode end", rv);
     return rv;
+}
+
+function create_disp(node) {
+    const format = getNodeFormat(node);
+    const value = getNodeValue(node);
+    console.log("value", value);
+    console.log("format", format);
+
+    if (format) {
+        let disp = d3.format(format)(value);
+        console.log(disp)
+        setNodeDisp(node, disp);
+    } else {
+        // console.log("calcEachNode", node.data.name, node.data.value);
+        let disp;
+        if (Number.isInteger(value)) {
+            disp = d3.format(",")(value);
+        } else if (typeof value === 'number' ) {
+            disp = d3.format(",.2f")(value);
+        } else {
+            disp = value;
+        }
+        // console.log("disp", disp);
+        setNodeDisp(node, disp);
+        // console.log(node.data.disp);
+    }
 }
 
 function get_multi_value(node, indicator) {
@@ -1047,7 +1079,7 @@ function get_multi_value_list(_node_list, indicator, _index, length) {
 
 
 function deleteNode(node, visited) {
-    console.log("deleteNode", getNodeName(node), node);
+    // console.log("deleteNode", getNodeName(node), node);
 
     clear_src(node);
     clear_path(node);
@@ -1056,33 +1088,11 @@ function deleteNode(node, visited) {
     setNodeDisp(node, "");
     setNodeValue(node, "");
     clear_ref(node, visited);
-    console.log(node);
+    // console.log(node);
     if (node.children) {
-        console.log(node.children);
+        // console.log(node.children);
         node.children.forEach(child => deleteNode(child, visited));
     }
-    // 削除予定のノード（子孫ノードを含む）を参照しているノードの計算結果をクリアする
-    // let visited = new Set();
-    // node.descendants()
-    //     .forEach(d => function(d) {
-    //             setNodeRepExpr(d, "");  // 削除されるので、本来は不要
-    //             setNodeDisp(d, "");
-    //             setNodeValue(d, "");
-    //             clear_ref(d, visited);
-    //             d.link_ref_set.clear(); //　削除されるので本来は不要
-    //             });
-    // node.descendants()
-    //     .forEach(child => {
-    //         console.log(child, child.link_ref_set);
-    //         child.link_ref_set.forEach(d => {d.link_src_set.delete(child);});
-    //         child.link_path_rev_set.forEach(d => {
-    //             setNodeRepExpr(d, "");
-    //             setNodeValue(d, "");
-    //             setNodeDisp(d, "");
-    //             d.link_path_set.delete(child);
-
-    //         })
-    //     });
 
     // エラーノード　参照ノード名の重複が解消する可能性がある
     const rootNode = node.ancestors ? node.ancestors().pop() : node;
@@ -1279,11 +1289,11 @@ function rename_reexpr_Node(node, new_name, new_expr ) {
 //新しいノードを作る
 //TODO rootの子を作る
 function new_Node(node, new_name, new_expr ) {
-    console.log("start new_Node");
+    // console.log("start new_Node");
     const rootNode = node.ancestors ? node.ancestors().pop() : node;
     const parent_node = node.parent;
-    console.log(node);
-    console.log(parent_node);
+    // console.log(node);
+    // console.log(parent_node);
     // const check_name = parent_node.children.find(child =>
     //         child.data.name === new_name);
     // if (check_name !== undefined) {
@@ -1291,7 +1301,7 @@ function new_Node(node, new_name, new_expr ) {
     //     return false;
     // }
     
-    console.log(node.data);
+    // console.log(node.data);
     // node.data.name = new_name;
     // node.data.expr = new_expr;
     // node.data.value = null;

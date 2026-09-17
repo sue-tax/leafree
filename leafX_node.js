@@ -193,6 +193,10 @@ function getNodeCustomX(d) {
 function setNodeCustomX(d, customX) {
     d.data.setAttribute("customX", customX);
 }
+function resetNodeCustom(d) {
+    d.data.removeAttribute("customX");
+    d.data.removeAttribute("customY");
+}
 
 function getNodeCustomY(d) {
     // console.log(d.data.getAttribute("customY"), Number(d.data.getAttribute("customY")) || undefined);
@@ -222,6 +226,9 @@ function getNodeFontFamily(d) {
 function setNodeFontFamily(d, font) {
     return d.data.setAttribute("font-family", font);
 }
+function removeNodeFontFamily(d) {
+    d.data.removeAttribute("font-family");
+}
 
 function getNodeFontSize(d) {
     return d.data.getAttribute("font-size");
@@ -230,21 +237,27 @@ function setNodeFontSize(d, font) {
     return d.data.setAttribute("font-size", font);
 }
 
+function getNodeColor(d) {
+    return d.data.getAttribute("color");
+}
+function setNodeColor(d, color) {
+    return d.data.setAttribute("color", color);
+}
+
 function getNodeFormat(d) {
     let format = d.data.getAttribute("format");
     if (! format) {
-        const rootNode = d.ancestors ? d.ancestors().pop() : d;
-        format = rootNode.data.getAttribute("format_default") || null;
+        // const rootNode = d.ancestors ? d.ancestors().pop() : d;
+        // format = rootNode.data.getAttribute("format_default") || null;
+        format = "";
     }
     return format;
 }
 function setNodeFormat(d, newformat) {
-    if (newformat === null || newformat === undefined || newformat === "") {
-        // 空の値が渡されたら format 属性自体を消去し、自動的にデフォルト参照に戻るようにする
-        d.data.removeAttribute("format");
-    } else {
-        d.data.setAttribute("format", newformat);
-    }
+    d.data.setAttribute("format", newformat);
+}
+function removeNodeFormat(d) {
+    d.data.removeAttribute("format");
 }
 
 function get_min_rectW_default(root) {
@@ -282,6 +295,12 @@ function getNodeFontSizeDefault(root) {
 }
 function setNodeFontSizeDefault(root, font) {
     return root.data.setAttribute("font-size_defalut", font);
+}
+function getNodeColorDefault(root) {
+    return root.data.getAttribute("color_default");
+}
+function setNodeColorDefault(root, font) {
+    return root.data.setAttribute("color_default", font);
 }
 
 

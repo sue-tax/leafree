@@ -47,7 +47,85 @@
     background: transparent;
     }
 
-  </style>
+#context-menu {
+    display: none;
+    position: absolute;
+    left: 0;
+    top: 0;
+    min-width: 220px;
+    background: #fff;
+    border: 1px solid #ccc;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    padding: 4px 0;
+    font-size: 14px;
+}
+
+#context-menu ul {
+    margin: 0;
+    padding: 0;
+}
+
+#context-menu li {
+    list-style: none;
+    position: relative;
+    padding: 8px 16px;
+    white-space: nowrap;
+    cursor: pointer;
+    background: #fff;
+}
+
+#context-menu li:hover {
+    background: #f2f2f2;
+}
+
+.menu-label {
+    display: block;
+}
+
+.has-submenu > .submenu {
+    display: none;
+    position: absolute;
+    left: 100%;
+    top: 0;
+    min-width: 180px;
+    background: #fff;
+    border: 1px solid #ccc;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    z-index: 1001;
+}
+
+.has-submenu.open > .submenu {
+    display: block;
+}
+
+.color-menu-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    cursor: default;
+}
+
+.color-menu-item:hover {
+    background: #f2f2f2;
+}
+
+.color-menu-item input[type="color"] {
+    width: 36px;
+    height: 24px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+}
+
+#context-menu .menu-separator {
+    border-top: 1px solid #ccc;
+    margin-top: 4px;
+    padding-top: 4px;
+}
+    </style>
 </head>
 
 <body>
@@ -56,17 +134,53 @@
         <button id="load-btn" type="button">XMLファイルを読み込み</button>
     </div>
 
-    <div id="context-menu" style="display: none; position: absolute; background: white; border: 1px solid #ccc; z-index: 10;">
-        <!-- メニュー -->
-        <ul>
-            <li id="menu-item-child" style="list-style: none; padding: 8px 16px; cursor: pointer;">子ノード挿入</li>
-            <li id="menu-item-copy" style="list-style: none; padding: 8px 16px; cursor: pointer;">コピー</li>
-            <li id="menu-item-paste" style="list-style: none; padding: 8px 16px; cursor: pointer;">子としてペースト</li>
-            <li id="menu-item-change" style="list-style: none; padding: 8px 16px; cursor: pointer;">名前・式変更</li>
-            <li id="menu-item-delete" style="list-style: none; padding: 8px 16px; cursor: pointer;">削除</li>
-        </ul>
-    </div>
+<div id="context-menu">
+    <ul class="menu-root">
+        <li id="menu-item-child">子ノード挿入</li>
+        <li id="menu-item-copy">コピー</li>
+        <li id="menu-item-paste">子としてペースト</li>
+        <li id="menu-item-change">名前・式変更</li>
+        <li id="menu-item-delete">削除</li>
+        <li id="menu-item-posreset" class="menu-separator">位置リセット</li>
+        <li id="menu-item-posreset-tree">位置リセット（子含む）</li>
 
+        <li id="menu-item-node-setting" class="has-submenu menu-separator">
+            <span class="menu-label">ノード設定＞</span>
+            <ul class="submenu">
+                <li id="menu-node-font">フォント</li>
+                <li id="menu-node-fontsize">フォントサイズ</li>
+                <li id="menu-node-color-item" class="color-menu-item">
+                    <span>色</span>
+                    <input type="color" id="menu-node-color-picker" value="#ffffff">
+                </li>
+                <li id="menu-node-format">表示形式</li>
+                <li id="menu-node-memo">メモ</li>
+                <li id="menu-node-width">幅</li>
+                <li id="menu-node-height">高さ</li>
+            </ul>
+        </li>
+
+        <li id="menu-item-tree-setting" class="has-submenu menu-separator">
+            <span class="menu-label">全体設定＞</span>
+            <ul class="submenu">
+                <li id="menu-tree-height">サイズ縦</li>
+                <li id="menu-tree-width">サイズ横</li>
+            </ul>
+        </li>
+
+        <li id="menu-item-default-setting" class="has-submenu menu-separator">
+            <span class="menu-label">デフォルト設定＞</span>
+            <ul class="submenu">
+                <li id="menu-default-font">フォント</li>
+                <li id="menu-default-fontsize">フォントサイズ</li>
+                <li id="menu-default-color-item" class="color-menu-item">
+                    <span>色</span>
+                    <input type="color" id="menu-default-color-picker" value="#ffffff">
+                </li>
+            </ul>
+        </li>
+    </ul>
+</div>    
     <svg width="1800" height="3000"> <!--不要かも--></svg>
     <script src="https://d3js.org/d3.v5.min.js"></script>
     <script src="https://unpkg.com/mathjs"></script>
@@ -75,6 +189,11 @@
     <script src="leafX_node.js"></script>
 
 <script>
+
+//TODO
+//format変更時のdisp再計算
+//各種変更設定時(format,fontなど)　子ノード含めるパターンや同名ノードのパターン
+//Treeの縦並び表記（？）
 
 //Go Liveを使わない
 
@@ -239,6 +358,16 @@ treeLayout = d3.tree()
         return a.parent === b.parent ? 1 : 2;
     })
 treeLayout(root);
+// const tree = d3.tree().nodeSize([basicSpace.height, basicSpace.width]);
+// tree(root);
+
+// root.each((d) => {
+//   const tmp = d.x;
+//   d.x = d.y + basicSpace.padding;
+//   d.y = tmp + basicSpace.padding;
+// });
+
+
 const svg = d3.select("svg");
 // d3.select("body").on("click.contextmenu", function() {
 //     menu.style("display", "none");
@@ -305,14 +434,6 @@ svg.insert("rect", ":first-child")
 var tree = d3.tree().size([svgHeight, svgWidth-200]); //縦、横
 // var tree = d3.tree().size([svgHeight*1.5, svgWidth-200]); //縦、横
 //==========================================================
-
-
-
-// var tree = d3.tree().size([svgWidth, svgHeight]);
-// console.log(svgWidth, svgHeight);
-// var tree = d3.tree().size([node_size_x*5, node_size_y*10]);
-// var tree = d3.tree().size([node_size_y*20, node_size_x*8]); //縦、横
-// console.log(node_size_x*8, node_size_y*20);
 
 
 var drag = d3.drag()
@@ -641,9 +762,8 @@ function paste_node(d) {
     const old_parentY = clipboardParentNode.y;
 
     // console.log(clipboardNode);
-    // const newNode = reassignIds(cloneTreeData(clipboardNode));
     const newElement = reassignIds(cloneTreeData(clipboardNode));
-    // console.log(newElement);
+    console.log(newElement);
     let name = getElementName(newElement);
 
     const flag = checkDuplicateNodeName(d, name);
@@ -668,9 +788,9 @@ function paste_node(d) {
     root.descendants()
         .forEach(d => {d.id = getNodeID(d);})
     const newParentNode = root.descendants().find( function(node) { return node.id === parentID; });
-    // console.log(newParentNode);
+    console.log(newParentNode);
     const new_node = newParentNode.children.find( function(node) { return getNodeName(node) === name; });
-    // console.log(new_node);
+    console.log(new_node);
 
     const parentX = newParentNode.x;
     const parentY = newParentNode.y;
@@ -806,36 +926,17 @@ function update(root, data_relation) {
         .text(function(d) { return getNodeDisp(d); })
         .style("font-size", function(d) { return d.font_size;})
         .style("font-family", function(d) { return d.font_family;})
+        .style("fill", function(d) {
+            let color = getNodeColor(d);
+            if (! color) {
+                color = getNodeColorDefault(root);
+                if (! color) {
+                    color = "#000000";
+                }
+            }
+            // console.log(color);
+            return color;})
         .style("fill-opacity", 1e-6);
-
-    //     // 1. relationのデータバインド（バグを防ぐため明示的に文字列を返す）
-    // var relation = g.selectAll('.relation')
-    //     .data(data_relation, function(d) { 
-    //         return d[0].id + "-" + d[1].id; 
-    //     });
-
-    // // 2. enter, update, exit の一括処理（.joinを使用）
-    // var relationLines = relation.join(
-    //     enter => {
-    //         // 新しく追加されたリレーション（線）
-    //         return enter.append("line")
-    //             .attr("class", "relation")
-    //             .attr("stroke", "#222") // リレーションとリンクを区別する色
-    //             .attr("stroke-width", 1)
-    //             .attr("stroke-dasharray", "1 1")
-    //             .attr("marker-end", "url(#arrow)"); // 終点に矢印を付与
-    //     },
-    //     update => update, // 既存の線はそのままキープ
-    //     exit => {exit.remove();} // 消えたリレーションは削除
-    // );
-
-    // // 3. 全リレーション（新規 + 既存）の座標を最新ノード位置（x, y）に更新
-    // // TODO x2,2の調整
-    // relationLines
-    //     .attr("x1", function(d) { return d[0].y + (d[0].w)/2; })
-    //     .attr("y1", function(d) { return d[0].x; })
-    //     .attr("x2", function(d) { return d[1].y; })
-    //     .attr("y2", function(d) { return d[1].x; });
 
     var node_rect = nodeEnter.append("rect")
         .attr("width", function(d) { return d.w; })
@@ -880,64 +981,173 @@ function update(root, data_relation) {
         input.setSelectionRange(newPos, newPos);
     });
 
-    node_rect.on("contextmenu", function(d) {
-        // ブラウザ標準の右クリックメニューをキャンセル
-        d3.event.preventDefault();
-        
-        // イベント座標の取得（D3のバージョンに応じてd3.event、またはグローバルeventを利用）
-        var currentEvent = d3.event || event;
-        
-        node_menu
-            .style("display", "block")
-            .style("left", (currentEvent.pageX + 10) + "px")
-            .style("top", (currentEvent.pageY + 10) + "px");
-        d3.select("body").on("click.contextmenu", function() {
-            node_menu.style("display", "none");
-        });
-        node_menu.on("click", function() {
-            d3.event.stopPropagation();
-        });
+// let contextTargetNode = null;
+    contextTargetNode = null;
 
-        // メニューの各アクションの設定
-        d3.select("#menu-item-child").on("click", function() {
-            parent_node = d;
-            insert_child(parent_node);
-            node_menu.style("display", "none");
+    function bindNodeContextMenu() {
+        node_rect.on("contextmenu", function(d) {
+            d3.event.preventDefault();
+            d3.event.stopPropagation();
+
+            contextTargetNode = d;
+            console.log(contextTargetNode);
+
+            const nodeColorPicker = document.getElementById("menu-node-color-picker");
+            nodeColorPicker.value = getNodeColor(d) || "#ffffff";
+
+            node_menu
+                .style("display", "block")
+                .style("left", (d3.event.pageX + 10) + "px")
+                .style("top", (d3.event.pageY + 10) + "px");
+
+            d3.selectAll(".has-submenu").classed("open", false);
         });
-        d3.select("#menu-item-change").on("click", function() {
-            change_node(d);
-            node_menu.style("display", "none");
-        });
-        // d3.select("#menu-item-reexpr").on("click", function() {
-        //     reexpr_node(d);
-        //     node_menu.style("display", "none");
-        // });
-        d3.select("#menu-item-copy").on("click", function() {
-            copy_node(d);
-            node_menu.style("display", "none");
-        });
-        d3.select("#menu-item-paste").on("click", function() {
-            paste_node(d);
-            node_menu.style("display", "none");
-        });
-        d3.select("#menu-item-delete").on("click", function() {
-            delete_node(d);
-            node_menu.style("display", "none");
-        });
+    }
+
+    function hideContextMenu() {
+        node_menu.style("display", "none");
+        d3.selectAll(".has-submenu").classed("open", false);
+    }
+
+    bindNodeContextMenu();
+
+    d3.select("body").on("click.contextmenu", function() {
+        hideContextMenu();
     });
 
+    node_menu.on("click", function() {
+        d3.event.stopPropagation();
+    });
+
+    d3.select("#menu-item-node-setting").on("click", function() {
+        d3.event.stopPropagation();
+
+        const item = d3.select(this);
+        const isOpen = item.classed("open");
+        item.classed("open", !isOpen);
+    });
+    d3.select("#menu-item-tree-setting").on("click", function() {
+        d3.event.stopPropagation();
+        const me = d3.select(this);
+        const isOpen = me.classed("open");
+        d3.selectAll(".has-submenu").classed("open", false);
+        me.classed("open", !isOpen);
+    });
+
+    d3.select("#menu-item-default-setting").on("click", function() {
+        d3.event.stopPropagation();
+        const me = d3.select(this);
+        const isOpen = me.classed("open");
+        d3.selectAll(".has-submenu").classed("open", false);
+        me.classed("open", !isOpen);
+    });
+
+    d3.select("#menu-item-child").on("click", function() {
+        if (!contextTargetNode) return;
+        parent_node = contextTargetNode;
+        insert_child(parent_node);
+        hideContextMenu();
+    });
+
+    d3.select("#menu-item-copy").on("click", function() {
+        if (!contextTargetNode) return;
+        copy_node(contextTargetNode);
+        node_menu.style("display", "none");
+    });
+
+
+    d3.select("#menu-item-paste").on("click", function() {
+        if (!contextTargetNode) return;
+        paste_node(contextTargetNode);
+        node_menu.style("display", "none");
+    });
+
+    d3.select("#menu-item-change").on("click", function() {
+        console.log("menu-item-change click");
+        if (!contextTargetNode) return;
+        console.log(getNodeName(contextTargetNode));
+        change_node(contextTargetNode);
+        node_menu.style("display", "none");
+    });
+
+    d3.select("#menu-item-delete").on("click", function() {
+        if (!contextTargetNode) return;
+        delete_node(contextTargetNode);
+        node_menu.style("display", "none");
+    });
+
+    d3.select("#menu-item-posreset").on("click", function() {
+        if (!contextTargetNode) return;
+        posreset_node(contextTargetNode);
+        node_menu.style("display", "none");
+    });
+    d3.select("#menu-item-posreset-tree").on("click", function() {
+        if (!contextTargetNode) return;
+        contextTargetNode.descendants().forEach(d => posreset_node(d));
+        node_menu.style("display", "none");
+    });
+
+    d3.select("#menu-node-font").on("click", function() {
+        if (!contextTargetNode) return;
+        openNodeFontEditor(contextTargetNode);
+        node_menu.style("display", "none");
+    });
+    d3.select("#menu-node-fontsize").on("click", function() {
+        if (!contextTargetNode) return;
+        openNodeFontSizeEditor(contextTargetNode);
+        node_menu.style("display", "none");
+    });
+    d3.select("#menu-node-format").on("click", function() {
+        if (!contextTargetNode) return;
+        openNodeFormatEditor(contextTargetNode);
+        node_menu.style("display", "none");
+    });
+    d3.select("#menu-default-font").on("click", function() {
+        if (!contextTargetNode) return;
+        openDefaultFontEditor(contextTargetNode);
+        node_menu.style("display", "none");
+    });
+    d3.select("#menu-default-fontsize").on("click", function() {
+        if (!contextTargetNode) return;
+        openDefaultFontSizeEditor(contextTargetNode);
+        node_menu.style("display", "none");
+    });
+
+
+    document.getElementById("menu-node-color-picker").addEventListener("change", function(e) {
+        e.stopPropagation();
+        e.preventDefault();
+
+        if (!contextTargetNode) return;
+
+        g.selectAll(".node-editor").remove();
+        // TODO 色変更の操作後、別のメニューの操作ダイアログがでない
+        
+        console.log(this.value);
+        setNodeColor(contextTargetNode, this.value);
+        update(root, data_relation);
+        hideContextMenu();
+    });
+
+    document.getElementById("menu-default-color-picker").addEventListener("change", function(e) {
+        e.stopPropagation();
+        setNodeColorDefault(root, this.value);
+        update(root, data_relation);
+        hideContextMenu();
+    });
+    
     nodeEnter.append("text")
         .attr("class", "node-name")
         .attr("x", 0)
         //   .attr("y", function(d) { return -d.rectH / 2}) // 四角形の上辺
-        .attr("dy", "-10")      // 上辺から?px上に浮かせる
+        .attr("dy", function(d) {return String(-d.h/2 - 1);})
         .text(function(d) { return getNodeName(d); })
         .style("fill-opacity", 1e-6);
 
     nodeEnter.append("text")
         .attr("class", "node-expr")
         .attr("x", 0)
-        .attr("dy", "20")      // 上辺から20px下に  TODO
+        .attr("dy", function(d) {return String(+d.h/2 + 9);})
         .text(function(d) { return getNodeExpr(d); })
         .style("fill-opacity", 1e-6);
 
@@ -1009,7 +1219,19 @@ function update(root, data_relation) {
                 d.h = h;
                 return w; })
         .text(function(d) { return getNodeDisp(d); })
-        .style("fill-opacity", 1);
+        .style("font-size", function(d) { return d.font_size;})
+        .style("font-family", function(d) { return d.font_family;})
+        .style("fill", function(d) {
+            let color = getNodeColor(d);
+            if (! color) {
+                color = getNodeColorDefault(root);
+                if (! color) {
+                    color = "#000000";
+                }
+            }
+            // console.log(color);
+            return color;})
+       .style("fill-opacity", 1);
 
     nodeUpdate.select("rect")
         // .attr("width", function(d) { return d.w?d.w:node_size_x; })
@@ -1028,11 +1250,13 @@ function update(root, data_relation) {
     nodeUpdate.select(".node-name")
         .transition()
         .duration(duration)
+        .attr("dy", function(d) {return String(-d.h/2 - 1);})
         .text(function(d) { return getNodeName(d);})
         .style("fill-opacity", 1);
     nodeUpdate.select(".node-expr")
         .transition()
         .duration(duration)
+        .attr("dy", function(d) {return String(+d.h/2 + 9);})
         .text(function(d) { return getNodeExpr(d); })
         .style("fill-opacity", 1);
 
@@ -1155,6 +1379,329 @@ function update(root, data_relation) {
         .attr("x2", function(d) { return d[1].y; })
         .attr("y2", function(d) { return d[1].x; });
 
+    bindNodeContextMenu();
+}
+
+
+function openNodeFontEditor(d) {
+    g.selectAll(".node-font-editor").remove();
+    activeExprInput = null;
+    editingNodeId = null;
+
+    const w = 260;
+    const h = 70;
+    const x = nodePosX(d) + 80;
+    const y = nodePosY(d) - h / 2;
+
+    const editor = g.append("foreignObject")
+        .attr("class", "node-font-editor")
+        .attr("x", x)
+        .attr("y", y)
+        .attr("width", w)
+        .attr("height", h);
+
+    const box = editor.append("xhtml:div")
+        .style("width", w + "px")
+        .style("height", h + "px")
+        .style("background", "#fff")
+        .style("border", "1px solid #666")
+        .style("padding", "4px")
+        .style("box-sizing", "border-box");
+
+    box.append("xhtml:input")
+        .attr("class", "edit-font-family")
+        .style("width", "100%")
+        .property("value", getNodeFontFamily(d) || "");
+
+    const row = box.append("xhtml:div")
+        .style("margin-top", "6px")
+        .style("text-align", "right");
+
+    row.append("xhtml:button")
+        .text("OK")
+        .on("click", function() {
+            const el = editor.node();
+            const newFont = el.querySelector(".edit-font-family").value.trim();
+            if (newFont === "") {
+                removeNodeFontFamily(d);
+            } else {
+                setNodeFontFamily(d, newFont);
+            }
+            // update(root, data_relation);
+            g.selectAll(".node-font-editor").remove();
+        });
+
+    row.append("xhtml:button")
+        .text("Cancel")
+        .style("margin-left", "4px")
+        .on("click", function() {
+            g.selectAll(".node-font-editor").remove();
+        });
+    setTimeout(function() {
+        const input = editor.node().querySelector(".edit-font-family");
+        if (input) input.focus();
+    }, 0);
+
+}
+function openNodeFontEditor(d) {
+    g.selectAll(".node-font-editor").remove();
+    activeExprInput = null;
+    editingNodeId = null;
+
+    const w = 260;
+    const h = 70;
+    const x = nodePosX(d) + 80;
+    const y = nodePosY(d) - h / 2;
+
+    const editor = g.append("foreignObject")
+        .attr("class", "node-font-editor")
+        .attr("x", x)
+        .attr("y", y)
+        .attr("width", w)
+        .attr("height", h);
+
+    const box = editor.append("xhtml:div")
+        .style("width", w + "px")
+        .style("height", h + "px")
+        .style("background", "#fff")
+        .style("border", "1px solid #666")
+        .style("padding", "4px")
+        .style("box-sizing", "border-box");
+
+    box.append("xhtml:input")
+        .attr("class", "edit-font-family")
+        .style("width", "100%")
+        .property("value", getNodeFontFamily(d) || "");
+
+    const row = box.append("xhtml:div")
+        .style("margin-top", "6px")
+        .style("text-align", "right");
+
+    row.append("xhtml:button")
+        .text("OK")
+        .on("click", function() {
+            const el = editor.node();
+            const newFont = el.querySelector(".edit-font-family").value.trim();
+            if (newFont === "") {
+                removeNodeFontFamily(d);
+            } else {
+                setNodeFontFamily(d, newFont);
+            }
+            // update(root, data_relation);
+            g.selectAll(".node-font-editor").remove();
+        });
+
+    row.append("xhtml:button")
+        .text("Cancel")
+        .style("margin-left", "4px")
+        .on("click", function() {
+            g.selectAll(".node-font-editor").remove();
+        });
+    setTimeout(function() {
+        const input = editor.node().querySelector(".edit-font-family");
+        if (input) input.focus();
+    }, 0);
+
+}
+function openNodeFontSizeEditor(d) {
+    g.selectAll(".node-fontsize-editor").remove();
+    activeExprInput = null;
+    editingNodeId = null;
+
+    const w = 200;
+    const h = 70;
+    const x = nodePosX(d) + 80;
+    const y = nodePosY(d) - h / 2;
+
+    const editor = g.append("foreignObject")
+        .attr("class", "node-fontsize-editor")
+        .attr("x", x)
+        .attr("y", y)
+        .attr("width", w)
+        .attr("height", h);
+
+    const box = editor.append("xhtml:div")
+        .style("width", w + "px")
+        .style("height", h + "px")
+        .style("background", "#fff")
+        .style("border", "1px solid #666")
+        .style("padding", "4px")
+        .style("box-sizing", "border-box");
+
+    box.append("xhtml:input")
+        .attr("class", "edit-font-size")
+        .style("width", "100%")
+        .property("value", getNodeFontSize(d) || "")
+        .each(function() {
+            activeExprInput = this;
+        });
+
+    const row = box.append("xhtml:div")
+        .style("margin-top", "6px")
+        .style("text-align", "right");
+
+    row.append("xhtml:button")
+        .text("OK")
+        .on("click", function() {
+            const el = editor.node();
+            const newFontSize = el.querySelector(".edit-font-size").value.trim();
+            if (newFontSize === "") {
+                removeNodeFontSize(d);
+            } else {
+                console.log(newFontSize);
+                setNodeFontSize(d, newFontSize);
+            }
+            g.selectAll(".node-fontsize-editor").remove();
+            update(root, data_relation);
+        });
+
+    row.append("xhtml:button")
+        .text("Cancel")
+        .style("margin-left", "4px")
+        .on("click", function() {
+            g.selectAll(".node-fontsize-editor").remove();
+        });
+    setTimeout(function() {
+        const input = editor.node().querySelector(".edit-font-size");
+        if (input) input.focus();
+    }, 0);
+
+}
+function openDefaultFontSizeEditor(d) {
+    g.selectAll(".default-fontsize-editor").remove();
+    activeExprInput = null;
+    editingNodeId = null;
+
+    const w = 200;
+    const h = 70;
+    const x = nodePosX(d) + 80;
+    const y = nodePosY(d) - h / 2;
+
+    const editor = g.append("foreignObject")
+        .attr("class", "default-fontsize-editor")
+        .attr("x", x)
+        .attr("y", y)
+        .attr("width", w)
+        .attr("height", h);
+
+    const box = editor.append("xhtml:div")
+        .style("width", w + "px")
+        .style("height", h + "px")
+        .style("background", "#fff")
+        .style("border", "1px solid #666")
+        .style("padding", "4px")
+        .style("box-sizing", "border-box");
+
+    box.append("xhtml:input")
+        .attr("class", "edit-font-size")
+        .style("width", "100%")
+        .property("value", getNodeFontSizeDefault(root) || "");
+        // .each(function() {
+        //     activeExprInput = this;
+        // });
+
+    const row = box.append("xhtml:div")
+        .style("margin-top", "6px")
+        .style("text-align", "right");
+
+    row.append("xhtml:button")
+        .text("OK")
+        .on("click", function() {
+            const el = editor.node();
+            const newFontSize = el.querySelector(".edit-font-size").value.trim();
+            if (newFontSize === "") {
+                removeNodeFontSizeDefault(root);
+            } else {
+                console.log(newFontSize);
+                setNodeFontSizeDefault(root, newFontSize);
+            }
+            g.selectAll(".default-fontsize-editor").remove();
+            update(root, data_relation);
+        });
+
+    row.append("xhtml:button")
+        .text("Cancel")
+        .style("margin-left", "4px")
+        .on("click", function() {
+            g.selectAll(".default-fontsize-editor").remove();
+        });
+    setTimeout(function() {
+        const input = editor.node().querySelector(".edit-font-size");
+        if (input) input.focus();
+    }, 0);
+
+}
+
+function openNodeFormatEditor(d) {
+    g.selectAll(".node-format-editor").remove();
+    activeExprInput = null;
+    editingNodeId = null;
+
+    const w = 200;
+    const h = 70;
+    const x = nodePosX(d) + 80;
+    const y = nodePosY(d) - h / 2;
+
+    const editor = g.append("foreignObject")
+        .attr("class", "node-format-editor")
+        .attr("x", x)
+        .attr("y", y)
+        .attr("width", w)
+        .attr("height", h);
+
+    const box = editor.append("xhtml:div")
+        .style("width", w + "px")
+        .style("height", h + "px")
+        .style("background", "#fff")
+        .style("border", "1px solid #666")
+        .style("padding", "4px")
+        .style("box-sizing", "border-box");
+
+    box.append("xhtml:input")
+        .attr("class", "edit-format")
+        .style("width", "100%")
+        .property("value", getNodeFormat(d) || "")
+        .each(function() {
+            activeExprInput = this;
+        });
+
+    const row = box.append("xhtml:div")
+        .style("margin-top", "6px")
+        .style("text-align", "right");
+
+    row.append("xhtml:button")
+        .text("OK")
+        .on("click", function() {
+            const el = editor.node();
+            const newFormat = el.querySelector(".edit-format").value.trim();
+            console.log(newFormat);
+            if (newFormat === "") {
+                removeNodeFormat(d);
+            } else {
+                setNodeFormat(d, newFormat);
+                console.log(newFormat);
+                // TODO ノードのdisp書換
+            }
+            g.selectAll(".node-format-editor").remove();
+            create_disp(d);
+            update(root, data_relation);
+        });
+    row.append("xhtml:button")
+        .text("Cancel")
+        .style("margin-left", "4px")
+        .on("click", function() {
+            g.selectAll(".node-fontsize-editor").remove();
+        });
+    setTimeout(function() {
+        const input = editor.node().querySelector(".edit-fonrmat");
+        if (input) input.focus();
+    }, 0);
+
+}
+
+function posreset_node(node) {
+    resetNodeCustom(node);
+    update(root, data_relation);
 }
 
 
@@ -1173,25 +1720,25 @@ function delete_node(node) {
     }
     let visited = new Set();
     deleteNode(node, visited);
-    console.log(node);
+    // console.log(node);
     console.log(node.parent);
     cleanupEmptyChildren(node.parent);
     // cleanupEmptyChildren(root.data ? root.data : root);
     // print_root(root);
     data_relation = [];
     create_relation();
-    console.log("after create_relation" ,data_relation);
+    // console.log("after create_relation" ,data_relation);
     update(root, data_relation);
 }
 
 
 function cleanupEmptyChildren(dataNode) {
-    console.log("cleanupEmptyChildren", dataNode);
+    // console.log("cleanupEmptyChildren", dataNode);
     if (dataNode.children && dataNode.children.length === 0) {
         delete dataNode.children;
     }
     if (dataNode.children) {
-        console.log(dataNode.children);
+        // console.log(dataNode.children);
         dataNode.children.forEach(child => cleanupEmptyChildren(child));
     }
 }
@@ -1287,7 +1834,7 @@ function openNewChildEditor(parentNode) {
 }
 
 function addChildNode(parentNode, name, expr) {
-    console.log("addChildNode", parentNode);
+    // console.log("addChildNode", parentNode);
     const isValid = isValidNodeName(name);
     if (! isValid) {
         alert("不適切なノード名です")
@@ -1295,7 +1842,7 @@ function addChildNode(parentNode, name, expr) {
     }
     const flag = checkDuplicateNodeName(parentNode, name);
     if (! flag) {
-        console.log(getNodeName(parentNode));
+        // console.log(getNodeName(parentNode));
         alert("ノード名が重複しています");
         return;
     } 
@@ -1307,8 +1854,8 @@ function addChildNode(parentNode, name, expr) {
             }
         }
     }
-    console.log("set_expr", set_expr);
-    console.log(typeof set_expr);
+    // console.log("set_expr", set_expr);
+    // console.log(typeof set_expr);
 
     // print_root(root);
 
@@ -1539,6 +2086,7 @@ function change_node(node) {
 
 //ノード名とノードの内容を入力して、変更します
 function openNodeEditor(d) {
+    console.log("openNodeEditor start");
     g.selectAll(".node-editor").remove();
     activeExprInput = null;
     editingNodeId = d.id;
@@ -1740,18 +2288,6 @@ function setNode(root) {
             // console.log(d.data.name, d.rectW);
         })
 }
-
-// --- 2. 文字列の幅（ピクセル数）を正確に測定するヘルパー関数 ---
-// function getTextSize(text, font_family, font_size) {
-//     var canvas = document.createElement('canvas');
-//     var context = canvas.getContext('2d');
-//     // context.font = font || '14px sans-serif';
-//     context.font = font_size + " " + font_family;
-//     const metrics = context.measureText(text);
-//     return metrics; //_.width + 5 + 5;   //左右に余裕を持たせる   
-// }
-// const textMeasureCanvas = document.createElement("canvas");
-// const textMeasureContext = textMeasureCanvas.getContext("2d");
 
 function getTextSize(text, font_family, font_size) {
     textMeasureContext.font = font_size + " " + font_family;
