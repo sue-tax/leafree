@@ -383,79 +383,6 @@ function calcAll(root) {
             setNodeValue(d, "");
             setNodeDisp(d, "");
         });
-
-    // root.descendants()
-    //     // .filter(d => typeof getNodeExpr(d) !== 'string' || ! getNodeExpr(d).startsWith("="))
-    //     .filter(d => ! getNodeExpr(d).startsWith("="))
-    //     // Excel "abc"=>"abc",'abc=>abc,'123=>123(文字列),123=>123（数値）
-    //     .forEach(d => {
-    //         calcEachNode(d);
-    //         const expr = getNodeExpr(d);
-    //         const format = getNodeFormat(d);
-    //         console.log(expr);
-    //         if (expr.startsWith('"')) {
-    //             setNodeRepExpr(d, expr);
-    //             let value;
-    //             if (expr.startsWith("\"") && expr.endsWith("\"")) {
-    //                 // result = dst;
-    //                 value = "'" + expr.slice(1, expr.length-1);            
-    //             } else {
-    //                 value = expr;
-    //             }
-    //             setNodeValue(d, value);
-    //             if (format) {
-    //                 setNodeDisp(d, d3.format(format)(value));
-    //             } else {
-    //                 setNodeDisp(d, value);
-    //             }
-    //         } else if (expr.startsWith("'")) {
-    //             // const expr2 = expr.slice(1);
-    //             const expr2 = expr;
-    //             setNodeRepExpr(d, expr2);
-    //             setNodeValue(d, expr2);
-    //             if (format) {
-    //                 setNodeDisp(d, d3.format(format)(expr2));
-    //             } else {
-    //                 setNodeDisp(d, expr2);
-    //             }
-    //         } else {
-    //             setNodeRepExpr(d, expr);
-    //             setNodeValue(d, expr);
-    //             let disp;
-    //             const num = Number(expr);
-    //             if (num) {
-    //                 if (format) {
-    //                     disp = d3.format(format)(num);
-    //                 } else {
-    //                     // console.log("calcEachNode", node.data.name, node.data.value);
-    //                     if (Number.isInteger(num)) {
-    //                         disp = d3.format(",")(num);
-    //                     } else if (typeof num === 'number' ) {
-    //                         disp = d3.format(",.2f")(num);
-    //                     } else {
-    //                         disp = num;
-    //                     }
-    //                     // console.log(node.data.disp);
-    //                 }
-    //             } else {
-    //                 if (format) {
-    //                     disp = d3.format(format)(expr);
-    //                 } else {
-    //                     // console.log("calcEachNode", node.data.name, node.data.value);
-    //                     disp = expr;
-    //                     // console.log(node.data.disp);
-    //                 }
-    //             }
-    //             setNodeDisp(d, disp);
-    //         }
-    //     });
-    // root.descendants()
-    //     .filter(d => getNodeExpr(d).startsWith("="))
-    //     .forEach(d => {
-    //         setNodeRepExpr(d, "");
-    //         setNodeValue(d, "");
-    //         setNodeDisp(d, "");
-    // });
     root.descendants()
         .filter(d => getNodeDisp(d) === "")
         .forEach(d => {
@@ -480,10 +407,6 @@ function calcEachNode(node) {
     // console.log(node);
     node.link_src_set.clear();
     node.link_path_set.clear();
-
-    // TODO 要検討 link_ref_set の各ノードへの伝搬通知は不要？
-    //  calcAllやノード削除・追加などから呼び出されるので
-    //  呼び出し元で処理済みの前提
 
     const rootNode = node.ancestors ? node.ancestors().pop() : node;
     const expr = getNodeExpr(node);
@@ -528,12 +451,12 @@ function calcEachNode(node) {
         while (index < length) {
             // console.log(expr);
             if (expr.slice(index).startsWith("'*'")) {
-                // console.log("startsWith", expr);
+                // console.log("startsWith", expr, expr.slice(index));
                 index += 3;
 
                 const children = node.descendants()
                         .filter(d => {return d.depth === node.depth+1;});
-                value_list = [];
+                let value_list = [];
                 children.forEach(child_node => {
                     const child_name = child_node.data.name;
                     const value = getNodeValue(child_node);
@@ -557,8 +480,11 @@ function calcEachNode(node) {
                     }
                     node.link_src_set.add(child_node);
                     child_node.link_ref_set.add(node);
+                    // console.log(value);
                     value_list.push(value);
+                    // console.log(value_list);
                 });
+                // console.log(value_list);
                 dst += "[" + value_list.join(",") + "]";
             } else if (expr.slice(index).startsWith("'**'")) {
                 // console.log("startsWith", expr);
@@ -566,7 +492,7 @@ function calcEachNode(node) {
                 setNodeValue(node, "#LOOP");
 
                 const children = node.descendants();
-                value_list = [];
+                let value_list = [];
                 children.forEach(child_node => {
                     const child_name = child_node.data.name;
                     const value = getNodeValue(child_node);
@@ -598,6 +524,7 @@ function calcEachNode(node) {
                     child_node.link_ref_set.add(node);
                     value_list.push(value);
                 });
+                console.log(value_list);
                 dst += "[" + value_list.join(",") + "]";
             } else if (expr[index] === "'") {
                 index += 1;
@@ -659,41 +586,17 @@ function calcEachNode(node) {
         setNodeValue(node, result);
         
         create_disp(node);
-        // const format = getNodeFormat(node);
-        // const value = getNodeValue(node);
-
-        // console.log("value", value);
-        // console.log("format", format);
-
-        // if (format) {
-        //     let disp = d3.format(format)(value);
-        //     console.log(disp)
-        //     setNodeDisp(node, disp);
-        // } else {
-        //     // console.log("calcEachNode", node.data.name, node.data.value);
-        //     let disp;
-        //     if (Number.isInteger(value)) {
-        //         disp = d3.format(",")(value);
-        //     } else if (typeof value === 'number' ) {
-        //         disp = d3.format(",.2f")(value);
-        //     } else {
-        //         disp = value;
-        //     }
-        //     // console.log("disp", disp);
-        //     setNodeDisp(node, disp);
-        //     // console.log(node.data.disp);
-        // }
-        rv = value;
+        rv = result;
     }
-    // console.log("calcEachNode end", rv);
+    // console.log("calcEachNode end", getNodeName(node), rv);
     return rv;
 }
 
 function create_disp(node) {
     const format = getNodeFormat(node);
     const value = getNodeValue(node);
-    console.log("value", value);
-    console.log("format", format);
+    // console.log("value", value);
+    // console.log("format", format);
 
     if (format) {
         let disp = d3.format(format)(value);

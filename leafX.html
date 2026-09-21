@@ -136,10 +136,10 @@
 
 <div id="context-menu">
     <ul class="menu-root">
-        <li id="menu-item-child">子ノード挿入</li>
+        <li id="menu-item-child">子ノードの追加...</li>
         <li id="menu-item-copy">コピー</li>
         <li id="menu-item-paste">子としてペースト</li>
-        <li id="menu-item-change">名前・式変更</li>
+        <li id="menu-item-change">名前・式変更...</li>
         <li id="menu-item-delete">削除</li>
         <li id="menu-item-posreset" class="menu-separator">位置リセット</li>
         <li id="menu-item-posreset-tree">位置リセット（子含む）</li>
@@ -147,36 +147,41 @@
         <li id="menu-item-node-setting" class="has-submenu menu-separator">
             <span class="menu-label">ノード設定＞</span>
             <ul class="submenu">
-                <li id="menu-node-font">フォント</li>
-                <li id="menu-node-fontsize">フォントサイズ</li>
+                <li id="menu-node-font">フォントの種類...</li>
+                <li id="menu-node-fontsize">フォントサイズ...</li>
                 <li id="menu-node-color-item" class="color-menu-item">
-                    <span>色</span>
+                    <span>色...</span>
                     <input type="color" id="menu-node-color-picker" value="#ffffff">
                 </li>
-                <li id="menu-node-format">表示形式</li>
-                <li id="menu-node-memo">メモ</li>
-                <li id="menu-node-width">幅</li>
-                <li id="menu-node-height">高さ</li>
+                <li id="menu-node-format">表示形式...</li>
+                <li id="menu-node-memo">メモ編集...</li>
+                <li id="menu-node-width">ノード幅...</li>
+                <li id="menu-node-height">ノード高さ...</li>
             </ul>
         </li>
 
         <li id="menu-item-tree-setting" class="has-submenu menu-separator">
             <span class="menu-label">全体設定＞</span>
             <ul class="submenu">
-                <li id="menu-tree-height">サイズ縦</li>
-                <li id="menu-tree-width">サイズ横</li>
+                <li id="menu-tree-height">全体縦...</li>
+                <li id="menu-tree-width">全体横...</li>
+                <li id="menu-tree-gap_x">ノード横間隔...</li>
+                <li id="menu-tree-gap_y">ノード縦間隔...</li>
+                <li id="menu-tree-separate1">兄弟間隔...</li>
+                <li id="menu-tree-separate2">従兄弟間隔...</li>
             </ul>
         </li>
 
         <li id="menu-item-default-setting" class="has-submenu menu-separator">
             <span class="menu-label">デフォルト設定＞</span>
             <ul class="submenu">
-                <li id="menu-default-font">フォント</li>
-                <li id="menu-default-fontsize">フォントサイズ</li>
+                <li id="menu-default-font">フォントの種類...</li>
+                <li id="menu-default-fontsize">フォントサイズ...</li>
                 <li id="menu-default-color-item" class="color-menu-item">
-                    <span>色</span>
+                    <span>色...</span>
                     <input type="color" id="menu-default-color-picker" value="#ffffff">
                 </li>
+                <li id="menu-default-format">表示形式...</li>
             </ul>
         </li>
     </ul>
@@ -202,6 +207,19 @@ let editingNodeId = null;
 
 let nodeCounter = 0;
 
+let node_width = 160;
+let node_height = 200; //80;
+let separate1 = 1;
+let separate2 = 1.5; //1.2;
+
+
+// treeLayout = d3.tree()
+//     // .nodeSize([node_size_y * 12, node_size_x])
+//     .nodeSize([node_height, node_width])
+//     .separation(function(a, b) {
+//         // return a.parent === b.parent ? 5 : 4;
+//         return a.parent === b.parent ? separate1 : separate2;
+//     })
 
 const node_size_x = 80;
 const node_size_y = 14;
@@ -245,6 +263,36 @@ const xmlStringMin = `
 //     </node>
 // </node>
 // `;
+// const xmlString =`
+// <node memo="tooltip memo">
+//     <name>root</name>
+//     <expr>1</expr>
+//     <node font-size="24px">
+//         <name>A</name>
+//         <expr>='root'</expr>
+//         <node>
+//             <name>A</name>
+//             <expr>"0"</expr>
+//         </node>
+//         <node  font-family="MS Mincho" font-size="72px">
+//             <name>B</name>
+//             <expr>='A'</expr>
+//             <node>
+//                 <name>b</name>
+//                 <expr>='a'</expr>
+//             </node>
+//         </node>
+//         <node font-family="MS Mincho" font-size="16px">
+//             <name>C</name>
+//             <expr>=concat('a',"ABC","1234567890DDDDDDDDDDDDDDDDDDDDDDDDDあいう")</expr>
+//             <node font-family="MS Mincho" font-size="40px">
+//                 <name>a</name>
+//                 <expr>"abc"</expr>
+//             </node>
+//         </node>
+//     </node>
+// </node>
+// `;
 const xmlString =`
 <node memo="tooltip memo">
     <name>root</name>
@@ -252,26 +300,42 @@ const xmlString =`
     <node font-size="24px">
         <name>A</name>
         <expr>='root'</expr>
-        <node>
-            <name>A</name>
-            <expr>"0"</expr>
-        </node>
-        <node  font-family="MS Mincho" font-size="72px">
-            <name>B</name>
-            <expr>='A'</expr>
             <node>
-                <name>b</name>
-                <expr>='a'</expr>
+                <name>AA</name>
+                <expr>"0"</expr>
             </node>
-        </node>
-        <node font-family="MS Mincho" font-size="16px">
-            <name>C</name>
-            <expr>=concat('a',"ABC","1234567890DDDDDDDDDDDDDDDDDDDDDDDDDあいう")</expr>
-            <node font-family="MS Mincho" font-size="40px">
-                <name>a</name>
-                <expr>"abc"</expr>
+            <node>
+                <name>AB</name>
+                <expr>"0"</expr>
             </node>
-        </node>
+    </node>
+    <node font-size="24px">
+        <name>B</name>
+        <expr>='root'</expr>
+            <node>
+                <name>BA</name>
+                <expr>"0"</expr>
+            </node>
+    </node>
+    <node font-size="24px">
+        <name>C</name>
+        <expr>='root'</expr>
+            <node>
+                <name>CA</name>
+                <expr>"0"</expr>
+            </node>
+            <node>
+                <name>CB</name>
+                <expr>"0"</expr>
+            </node>
+    </node>
+    <node font-size="24px">
+        <name>D</name>
+        <expr>='root'</expr>
+            <node>
+                <name>DA</name>
+                <expr>"0"</expr>
+            </node>
     </node>
 </node>
 `;
@@ -350,14 +414,17 @@ setNode(root);
 create_relation();
 
 // treeLayout = d3.tree().nodeSize([node_size_x, node_size_y * 3]);
-treeLayout = d3.tree()
-    // .nodeSize([node_size_y * 12, node_size_x])
-    .nodeSize([node_size_y * 4, node_size_x])
-    .separation(function(a, b) {
-        // return a.parent === b.parent ? 5 : 4;
-        return a.parent === b.parent ? 1 : 2;
-    })
-treeLayout(root);
+
+//2026/09/21 自分で位置を計算するので不要になった
+// treeLayout = d3.tree()
+//     // .nodeSize([node_size_y * 12, node_size_x])
+//     .nodeSize([node_height , node_width])
+//     .separation(function(a, b) {
+//         // return a.parent === b.parent ? 5 : 4;
+//         return a.parent === b.parent ? separate1 : separate2;
+//     })
+// treeLayout(root);
+
 // const tree = d3.tree().nodeSize([basicSpace.height, basicSpace.width]);
 // tree(root);
 
@@ -375,7 +442,8 @@ const svg = d3.select("svg");
 // menu.on("click", function() {
 //     d3.event.stopPropagation();
 // });
-
+svg_height_min = 900;
+svg_width_min = 800;
 resize();
 const nodes = root.descendants();
 const xExtent = d3.extent(nodes, d => d.x); // [最左のx, 最右のx]
@@ -387,14 +455,9 @@ const margin = { top: 40, right: 40, bottom: 40, left: 40 };
 // // 4. 必要なSVGサイズを計算
 // // const svgWidth = Math.max((xExtent[1] - xExtent[0]) + margin.left + margin.right + node_size_x*2,800);
 // // const svgHeight = Math.max((yExtent[1] - yExtent[0]) + margin.top + margin.bottom,900);
-const svgWidth = Math.max((yExtent[1] - yExtent[0]) + margin.left + margin.right + node_size_x*2,800);
-const svgHeight = Math.max((xExtent[1] - xExtent[0]) + margin.top + margin.bottom,900);
+const svgWidth = Math.max((yExtent[1] - yExtent[0]) + margin.left + margin.right + node_width*2,svg_height_min);
+const svgHeight = Math.max((xExtent[1] - xExtent[0]) + margin.top + margin.bottom,svg_width_min);
 // console.log(svgWidth, svgHeight);
-
-// 5. SVG要素にサイズを適用
-// svg = d3.select("svg")
-//     .attr("width", svgWidth)
-//     .attr("height", svgHeight);
 
 var defs = svg.append("defs");
 
@@ -425,20 +488,24 @@ svg.insert("rect", ":first-child")
     .style("pointer-events", "all")
     .on("dblclick", function() {
         d3.event.stopPropagation();
-
         const p = d3.mouse(g.node());
         openNewRootChildEditor(p[0], p[1]);
     });
 
 //==========================================================
-var tree = d3.tree().size([svgHeight, svgWidth-200]); //縦、横
+var tree = d3.tree().size([svgHeight, svgWidth]); //縦、横
 // var tree = d3.tree().size([svgHeight*1.5, svgWidth-200]); //縦、横
 //==========================================================
 
+let dragStartX = 0;
+let dragStartY = 0;
+let isRealDrag = false;
+
 
 var drag = d3.drag()
+    .clickDistance(10)
     .on("start", function(d) {
-        // console.log("drag start");
+        console.log("drag start");
         d3.select(this).classed("dragging", true);
         // g.selectAll(".node").style("pointer-events", "auto");
         // d3.select(this).style("pointer-events", "none")
@@ -453,8 +520,17 @@ var drag = d3.drag()
                     customY: getNodeCustomY(node)
                 };
             });
+        dragStartX = d3.event.x;
+        dragStartY = d3.event.y;
+        isRealDrag = false;
         })
     .on("drag", function(d) {
+        const dx = d3.event.x - dragStartX;
+        const dy = d3.event.y - dragStartY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (!isRealDrag && dist < 6) return;
+
+        isRealDrag = true;
         d.hasMoved = true;
         var deltaX = d3.event.dx; 
         var deltaY = d3.event.dy;
@@ -464,8 +540,8 @@ var drag = d3.drag()
             // 横型ツリーに合わせた座標更新（xに縦移動、yに横移動を加算）
             node.x += deltaY;
             node.y += deltaX;
-            setNodeCustomX(node, node.x);
-            setNodeCustomY(node, node.y);
+            setNodeCustomX(node, node.x); //20260920 コメントアウト
+            setNodeCustomY(node, node.y); //20260920 コメントアウト
         });
         g.selectAll(".node")
             .attr("transform", function(node) { 
@@ -506,7 +582,7 @@ var drag = d3.drag()
                 // var h  = l[0].data.rectH || node_size_y;
                 var h  = l[0].h;
                 // console.log("y1", sy +h/2);
-                return sy + h / 2;
+                return sy; // + h / 2;
             })
             .attr("x2", function(l) {
                 var tx = getNodeCustomY(l[1]) !== undefined ? getNodeCustomY(l[1]) : l[1].y;
@@ -517,11 +593,14 @@ var drag = d3.drag()
                 var ty = getNodeCustomX(l[1]) !== undefined ? getNodeCustomX(l[1]) : l[1].x;
                 // var h  = l[1].data.rectH || node_size_y;
                 var h  = l[1].h;
-                return ty+ h / 2; // -l[0].x 
+                return ty; //+ h / 2; // -l[0].x 
             })
             ;
             })
     .on("end", function(d) {
+        if (! isRealDrag) return;
+        isRealDrag = false;
+
         var self = d3.select(this)
             .classed('dragging', false)
             .style('pointer-events', 'none');
@@ -598,8 +677,14 @@ var drag = d3.drag()
                     console.log(node.x, node.y, getNodeCustomX(node), getNodeCustomY(node));
                     node.x = original.x;
                     node.y = original.y;
-                    setNodeCustomX(node, original.customX?? node.x);
-                    setNodeCustomY(node, original.customY?? node.y);
+                    if (original.custumX) {
+                        setNodeCustomX(node, original.customX);
+                        setNodeCustomY(node, original.customY);
+                    } else {
+                        resetNodeCustum(node);
+                    }
+                    // setNodeCustomX(node, original.customX?? node.x);
+                    // setNodeCustomY(node, original.customY?? node.y);
                 }
             });
         } else {
@@ -609,8 +694,6 @@ var drag = d3.drag()
             var deltaY_final = d.y - originCoordinates[d.id].y;
             setNodeCustomX(d, d.x);
             setNodeCustomY(d, d.y);
-            // d.data.customX = d.x;
-            // d.data.customY = d.y;
             
             d.descendants().forEach(function(node) {
             if (node !== d) {
@@ -618,8 +701,6 @@ var drag = d3.drag()
                 node.y = originCoordinates[node.id].y + deltaY_final;
                 setNodeCustomX(node, node.x);
                 setNodeCustomY(node, node.y);
-                // node.data.customX = node.x;
-                // node.data.customY = node.y;
             }
             });
             resize();
@@ -665,7 +746,7 @@ d3.select("#load-btn").on("click", async function() {
             node => Array.from(node.children).filter(child => child.tagName === "node")
         );
 
-        console.log("after hierarchy", root);
+        // console.log("after hierarchy", root);
         const invalidNodes = root.descendants()
                 .filter(node => { return ! isValidNodeName(getNodeName(node));})
         if (invalidNodes.length !== 0) {
@@ -702,18 +783,20 @@ d3.select("#load-btn").on("click", async function() {
                 node => Array.from(node.children).filter(child => child.tagName === "node")
             );
         }
-        console.log(root);
+        // console.log(root);
         //ロードした際のidは無視
         root.descendants()
-            .forEach(d => {console.log(d); d.id = ++nodeCounter; setNodeID(d, d.id);})
+            .forEach(d => {/*console.log(d);*/ d.id = ++nodeCounter; setNodeID(d, d.id);})
 
         calcAll(root);
-        console.log("after calcAll", root);
+        // console.log("after calcAll", root);
         setNode(root);
         data_relation = [];
         create_relation();
-        console.log(data_relation);
-        treeLayout(root);
+        // console.log(data_relation);
+        // treeLayout(root);    2026/09/21 自分で位置を計算するので不要になった
+        treeArange(root);
+
         root.descendants()
             .forEach(d => {
                 // console.log(d.data.name, d.data.customX, d.data.customY);
@@ -735,7 +818,7 @@ window.addEventListener("beforeunload", function() {
 let clipboardNode = null;
 
 update(root, data_relation);
-
+resize();
 
 function cloneTreeData(data) {
     return data.cloneNode(true);    //structuredClone(data);
@@ -825,6 +908,12 @@ function paste_node(d) {
 
 
 function update(root, data_relation) {
+    // root.descendants().forEach(function(d) {
+    //     console.log(getNodeName(d), d.x, d.y);
+    // });
+    // let currentNodeSize = treeLayout.nodeSize();
+    // console.log(currentNodeSize);
+
     root.descendants().forEach(function(d) {
         let id = getNodeID(d);
         if (!id) {
@@ -838,8 +927,10 @@ function update(root, data_relation) {
     root.descendants().forEach(function(d) {
         const customX = getNodeCustomX(d);
         const customY = getNodeCustomY(d);
+        // console.log("positions", getNodeName(d),customX,customY);
         if (customX !== undefined && customY !== undefined) {
             positions[d.id] = { x: customX, y: customY };
+            // console.log("positions", getNodeName(d));
         }
     });
 
@@ -849,7 +940,38 @@ function update(root, data_relation) {
     const font_size_default = getNodeFontSizeDefault(root);
 
     // tree レイアウト位置を計算
-    tree(root);
+    // tree(root);
+    // console.log(treeLayout.nodeSize());
+
+    // treeLayout(root);    2026/09/21 自分で位置を計算するので不要になった
+
+    // root.descendants().forEach(function(d) {
+    //     console.log(getNodeName(d), d.x, d.y);
+    // });
+
+    // const nodes = root.descendants().filter(d => (getNodeName(d) !== "root"));
+    // let minX = d3.min(nodes, d => {
+    //     const customX = getNodeCustomX(d);
+    //     return customX !== undefined ? customX : d.x;
+    // });
+    // console.log("minX", minX);
+
+    treeArange(root);
+
+
+
+    // root.descendants().forEach(function(d) {
+    //     console.log(getNodeName(d), d.x, d.y);
+    // });
+
+    // TODO ドラッグで移動した際に、問題
+    // if (minX < 0) {
+    //     minX -= 0; //50;
+    //     root.descendants().forEach(function(d) {
+    //         d.x -= minX;
+    //         console.log(getNodeName(d), d.x, d.y);
+    //     });
+    // }
 
     // 子、孫方向の位置設定
     // root.each(function(d) { d.y = d.depth * 320; });
@@ -858,6 +980,7 @@ function update(root, data_relation) {
         if (positions[d.id]) {
             d.x = positions[d.id].x;
             d.y = positions[d.id].y;
+            console.log("positions", getNodeName(d));
         }
     });
     // console.log("root", root);
@@ -870,13 +993,20 @@ function update(root, data_relation) {
     // console.log("node", node);
     // console.log("relation", relation);
 
+    // root.descendants().forEach(function(d) {
+    //     console.log(getNodeName(d), d.x, d.y);
+    // });
     var nodeEnter = node
         .enter()
         .append("g")
         .attr("class", "node")
-        .attr("transform", function(d) { return "translate(" + nodePosX(d) + "," + nodePosY(d) + ")"; })
+        // .attr("transform", function(d) { return "translate(" + nodePosX(d) + "," + nodePosY(d) + ")"; })
+        .attr("transform", function(d) { return "translate(" + d.y + "," + d.x + ")"; })
         .call(drag)
         ;
+    // root.descendants().forEach(function(d) {
+    //     console.log(getNodeName(d), d.x, d.y);
+    // });
 
     // 
     var textDisp = nodeEnter.append("text")
@@ -952,6 +1082,7 @@ function update(root, data_relation) {
         .style("stroke-width", "1px")
         .style("fill-opacity", 1e-6)
         ;
+
     nodeEnter
         .on("dblclick", function(d) {
             d3.event.stopPropagation();
@@ -981,160 +1112,7 @@ function update(root, data_relation) {
         input.setSelectionRange(newPos, newPos);
     });
 
-// let contextTargetNode = null;
-    contextTargetNode = null;
-
-    function bindNodeContextMenu() {
-        node_rect.on("contextmenu", function(d) {
-            d3.event.preventDefault();
-            d3.event.stopPropagation();
-
-            contextTargetNode = d;
-            console.log(contextTargetNode);
-
-            const nodeColorPicker = document.getElementById("menu-node-color-picker");
-            nodeColorPicker.value = getNodeColor(d) || "#ffffff";
-
-            node_menu
-                .style("display", "block")
-                .style("left", (d3.event.pageX + 10) + "px")
-                .style("top", (d3.event.pageY + 10) + "px");
-
-            d3.selectAll(".has-submenu").classed("open", false);
-        });
-    }
-
-    function hideContextMenu() {
-        node_menu.style("display", "none");
-        d3.selectAll(".has-submenu").classed("open", false);
-    }
-
-    bindNodeContextMenu();
-
-    d3.select("body").on("click.contextmenu", function() {
-        hideContextMenu();
-    });
-
-    node_menu.on("click", function() {
-        d3.event.stopPropagation();
-    });
-
-    d3.select("#menu-item-node-setting").on("click", function() {
-        d3.event.stopPropagation();
-
-        const item = d3.select(this);
-        const isOpen = item.classed("open");
-        item.classed("open", !isOpen);
-    });
-    d3.select("#menu-item-tree-setting").on("click", function() {
-        d3.event.stopPropagation();
-        const me = d3.select(this);
-        const isOpen = me.classed("open");
-        d3.selectAll(".has-submenu").classed("open", false);
-        me.classed("open", !isOpen);
-    });
-
-    d3.select("#menu-item-default-setting").on("click", function() {
-        d3.event.stopPropagation();
-        const me = d3.select(this);
-        const isOpen = me.classed("open");
-        d3.selectAll(".has-submenu").classed("open", false);
-        me.classed("open", !isOpen);
-    });
-
-    d3.select("#menu-item-child").on("click", function() {
-        if (!contextTargetNode) return;
-        parent_node = contextTargetNode;
-        insert_child(parent_node);
-        hideContextMenu();
-    });
-
-    d3.select("#menu-item-copy").on("click", function() {
-        if (!contextTargetNode) return;
-        copy_node(contextTargetNode);
-        node_menu.style("display", "none");
-    });
-
-
-    d3.select("#menu-item-paste").on("click", function() {
-        if (!contextTargetNode) return;
-        paste_node(contextTargetNode);
-        node_menu.style("display", "none");
-    });
-
-    d3.select("#menu-item-change").on("click", function() {
-        console.log("menu-item-change click");
-        if (!contextTargetNode) return;
-        console.log(getNodeName(contextTargetNode));
-        change_node(contextTargetNode);
-        node_menu.style("display", "none");
-    });
-
-    d3.select("#menu-item-delete").on("click", function() {
-        if (!contextTargetNode) return;
-        delete_node(contextTargetNode);
-        node_menu.style("display", "none");
-    });
-
-    d3.select("#menu-item-posreset").on("click", function() {
-        if (!contextTargetNode) return;
-        posreset_node(contextTargetNode);
-        node_menu.style("display", "none");
-    });
-    d3.select("#menu-item-posreset-tree").on("click", function() {
-        if (!contextTargetNode) return;
-        contextTargetNode.descendants().forEach(d => posreset_node(d));
-        node_menu.style("display", "none");
-    });
-
-    d3.select("#menu-node-font").on("click", function() {
-        if (!contextTargetNode) return;
-        openNodeFontEditor(contextTargetNode);
-        node_menu.style("display", "none");
-    });
-    d3.select("#menu-node-fontsize").on("click", function() {
-        if (!contextTargetNode) return;
-        openNodeFontSizeEditor(contextTargetNode);
-        node_menu.style("display", "none");
-    });
-    d3.select("#menu-node-format").on("click", function() {
-        if (!contextTargetNode) return;
-        openNodeFormatEditor(contextTargetNode);
-        node_menu.style("display", "none");
-    });
-    d3.select("#menu-default-font").on("click", function() {
-        if (!contextTargetNode) return;
-        openDefaultFontEditor(contextTargetNode);
-        node_menu.style("display", "none");
-    });
-    d3.select("#menu-default-fontsize").on("click", function() {
-        if (!contextTargetNode) return;
-        openDefaultFontSizeEditor(contextTargetNode);
-        node_menu.style("display", "none");
-    });
-
-
-    document.getElementById("menu-node-color-picker").addEventListener("change", function(e) {
-        e.stopPropagation();
-        e.preventDefault();
-
-        if (!contextTargetNode) return;
-
-        g.selectAll(".node-editor").remove();
-        // TODO 色変更の操作後、別のメニューの操作ダイアログがでない
-        
-        console.log(this.value);
-        setNodeColor(contextTargetNode, this.value);
-        update(root, data_relation);
-        hideContextMenu();
-    });
-
-    document.getElementById("menu-default-color-picker").addEventListener("change", function(e) {
-        e.stopPropagation();
-        setNodeColorDefault(root, this.value);
-        update(root, data_relation);
-        hideContextMenu();
-    });
+    update_menu_set(node_rect);
     
     nodeEnter.append("text")
         .attr("class", "node-name")
@@ -1153,31 +1131,44 @@ function update(root, data_relation) {
 
     nodeEnter
         .on("mouseover", function(d) {
-            if (getNodeMemo(d)) {
-                tooltip
-                    .style("display", "block")
-                    .html(getNodeMemo(d));
+            if (! d3.event.shiftKey) {
+                if (getNodeMemo(d)) {
+                    tooltip
+                        .style("display", "block")
+                        .html(getNodeMemo(d));
+                }
+                return;
+            } else {
+                const repExpr = getNodeRepExpr(d);
+                if (repExpr) {
+                    tooltip
+                        .style("display", "block")
+                        .html(repExpr);
+                }
             }
         })
         .on("mousemove", function() {
             tooltip
-                .style("left", (d3.event.pageX + 12) + "px")
-                .style("top", (d3.event.pageY + 12) + "px");
+                .style("left", (d3.event.pageX + 24) + "px")
+                .style("top", (d3.event.pageY - 20) + "px");
         })
         .on("mouseout", function() {
             tooltip.style("display", "none");
         });
     
     var nodeUpdate = nodeEnter.merge(node);
-    // var relUpdate = relEnter.merge(relation);
     var duration = 500;
     // console.log("after merge");
 
     nodeUpdate.transition()
         .duration(duration)
-        .attr("transform", function(d) { return "translate(" + nodePosX(d) + "," + nodePosY(d) + ")"; })
+        // .attr("transform", function(d) { return "translate(" + nodePosX(d) + "," + nodePosY(d) + ")"; })
+        .attr("transform", function(d) { return "translate(" + d.y + "," + d.x + ")"; })
         // .call(drag)
         ;
+    // root.descendants().forEach(function(d) {
+    //     console.log(getNodeName(d), d.x, d.y);
+    // });
 
     nodeUpdate.select(".node-disp")
         .transition()
@@ -1187,6 +1178,7 @@ function update(root, data_relation) {
                 let font_family = getNodeFontFamily(d);
                 if (! font_family) {
                     font_family = getNodeFontFamilyDefault(root);
+                    // console.log("default", font_family);
                     if (! font_family) {
                         font_family = font_family_system;
                     }
@@ -1379,22 +1371,85 @@ function update(root, data_relation) {
         .attr("x2", function(d) { return d[1].y; })
         .attr("y2", function(d) { return d[1].x; });
 
-    bindNodeContextMenu();
+    bindNodeContextMenu(node_rect);
+
+
+    // root.descendants().forEach(function(d) {
+    //     console.log(getNodeName(d), d.x, d.y);
+    // });
+    // currentNodeSize = treeLayout.nodeSize();
+    // console.log(currentNodeSize);
 }
 
 
-function openNodeFontEditor(d) {
-    g.selectAll(".node-font-editor").remove();
+function treeArange(root) {
+    // ノード間のスペースなど
+    const basicSpace = {
+    padding: 30,
+    height: 40,
+    width: 120,
+    };
+
+    //x座標の計算
+    const defineX = (wholeData, eachData, spaceInfo) => {
+        //最上位から現在のデータまでの最短ルートを取得
+        const path = wholeData.path(eachData);
+        //渡された元データがJSONのままなのでHierarchy形式に変換
+        const wholeTree = wholeData.descendants()
+        wholeTree.forEach(d => d.value);
+        //経由する各ノードのある階層から、経由地点より上に位置する末端ノードの個数を合計
+        const leaves = path.map((ancestor) => {
+            //経由地点のある階層のうちで親が同じデータを抽出
+            const myHierarchy = wholeTree.filter(
+                    (item, idx, ary) =>
+                    item.depth === ancestor.depth && item.parent === ancestor.parent);
+            //その階層における経由地点のインデックス取得
+            var myIdx = myHierarchy.findIndex((item) => 
+                    getNodeID(item) == getNodeID(ancestor));
+            //経由地点より上にあるものをフィルタリング
+            const fitered = myHierarchy.filter((hrcyItem, hrcyIdx /*, hrcyAry*/) =>
+                    hrcyIdx < myIdx);
+            //valueを集計（配列が空の時があるので、reduceの初期値に0を設定）
+            const sumValues = fitered.reduce(
+                    (previous, current, index, array) =>
+                    previous + current.value, 0);
+            return sumValues;
+        });
+        console.log(leaves);
+        //末端ノードの数を合計
+        const sum = leaves.reduce((previous, current, index, array) => previous + current);
+        return sum;
+    };
+
+    //位置決め
+    const definePos = (treeData, spaceInfo) => {
+        treeData.each((d) => {
+            d.y = spaceInfo.padding + d.depth * spaceInfo.width;
+            const sum = defineX(treeData, d, spaceInfo);
+            d.x = spaceInfo.padding + sum * spaceInfo.height;
+        })
+    }
+
+    root.sum(d => {
+        const v = Number(d.value);
+        return Number.isFinite(v) ? v : 1;
+    });
+    definePos(root, basicSpace);
+}
+
+
+function genericEditor(node, initValue, func) {
+    g.selectAll(".generic-editor").remove();
     activeExprInput = null;
     editingNodeId = null;
 
     const w = 260;
     const h = 70;
-    const x = nodePosX(d) + 80;
-    const y = nodePosY(d) - h / 2;
+    const x = nodePosX(node) + 80;
+    const y = nodePosY(node) - h / 2;
 
     const editor = g.append("foreignObject")
-        .attr("class", "node-font-editor")
+        .attr("class", "generic-editor")
         .attr("x", x)
         .attr("y", y)
         .attr("width", w)
@@ -1409,9 +1464,9 @@ function openNodeFontEditor(d) {
         .style("box-sizing", "border-box");
 
     box.append("xhtml:input")
-        .attr("class", "edit-font-family")
+        .attr("class", "edit-generic")
         .style("width", "100%")
-        .property("value", getNodeFontFamily(d) || "");
+        .property("value", initValue);
 
     const row = box.append("xhtml:div")
         .style("margin-top", "6px")
@@ -1421,281 +1476,345 @@ function openNodeFontEditor(d) {
         .text("OK")
         .on("click", function() {
             const el = editor.node();
-            const newFont = el.querySelector(".edit-font-family").value.trim();
-            if (newFont === "") {
-                removeNodeFontFamily(d);
-            } else {
-                setNodeFontFamily(d, newFont);
-            }
+            const inputData = el.querySelector(".edit-generic").value.trim();
+            (func)(node, inputData);
+            // if (inputData === "") {
+            //     removeNodeFontFamily(d);
+            // } else {
+            //     setNodeFontFamily(d, newFont);
+            // }
             // update(root, data_relation);
-            g.selectAll(".node-font-editor").remove();
+            g.selectAll(".generic-editor").remove();
         });
 
     row.append("xhtml:button")
         .text("Cancel")
         .style("margin-left", "4px")
         .on("click", function() {
-            g.selectAll(".node-font-editor").remove();
+            g.selectAll(".generic-editor").remove();
         });
     setTimeout(function() {
-        const input = editor.node().querySelector(".edit-font-family");
+        const input = editor.node().querySelector(".edit-generic");
         if (input) input.focus();
     }, 0);
-
 }
-function openNodeFontEditor(d) {
-    g.selectAll(".node-font-editor").remove();
-    activeExprInput = null;
-    editingNodeId = null;
 
-    const w = 260;
-    const h = 70;
-    const x = nodePosX(d) + 80;
-    const y = nodePosY(d) - h / 2;
+function bindNodeContextMenu(node_rect) {
+    node_rect.on("contextmenu", function(d) {
+        d3.event.preventDefault();
+        d3.event.stopPropagation();
 
-    const editor = g.append("foreignObject")
-        .attr("class", "node-font-editor")
-        .attr("x", x)
-        .attr("y", y)
-        .attr("width", w)
-        .attr("height", h);
+        contextTargetNode = d;
+        console.log(contextTargetNode);
 
-    const box = editor.append("xhtml:div")
-        .style("width", w + "px")
-        .style("height", h + "px")
-        .style("background", "#fff")
-        .style("border", "1px solid #666")
-        .style("padding", "4px")
-        .style("box-sizing", "border-box");
+        const nodeColorPicker = document.getElementById("menu-node-color-picker");
+        nodeColorPicker.value = getNodeColor(d) || "#ffffff";
 
-    box.append("xhtml:input")
-        .attr("class", "edit-font-family")
-        .style("width", "100%")
-        .property("value", getNodeFontFamily(d) || "");
+        node_menu
+            .style("display", "block")
+            .style("left", (d3.event.pageX + 10) + "px")
+            .style("top", (d3.event.pageY + 10) + "px");
 
-    const row = box.append("xhtml:div")
-        .style("margin-top", "6px")
-        .style("text-align", "right");
-
-    row.append("xhtml:button")
-        .text("OK")
-        .on("click", function() {
-            const el = editor.node();
-            const newFont = el.querySelector(".edit-font-family").value.trim();
-            if (newFont === "") {
-                removeNodeFontFamily(d);
-            } else {
-                setNodeFontFamily(d, newFont);
-            }
-            // update(root, data_relation);
-            g.selectAll(".node-font-editor").remove();
-        });
-
-    row.append("xhtml:button")
-        .text("Cancel")
-        .style("margin-left", "4px")
-        .on("click", function() {
-            g.selectAll(".node-font-editor").remove();
-        });
-    setTimeout(function() {
-        const input = editor.node().querySelector(".edit-font-family");
-        if (input) input.focus();
-    }, 0);
-
+        d3.selectAll(".has-submenu").classed("open", false);
+    });
 }
-function openNodeFontSizeEditor(d) {
-    g.selectAll(".node-fontsize-editor").remove();
-    activeExprInput = null;
-    editingNodeId = null;
 
-    const w = 200;
-    const h = 70;
-    const x = nodePosX(d) + 80;
-    const y = nodePosY(d) - h / 2;
 
-    const editor = g.append("foreignObject")
-        .attr("class", "node-fontsize-editor")
-        .attr("x", x)
-        .attr("y", y)
-        .attr("width", w)
-        .attr("height", h);
+function update_menu_set(node_rect) {
+    contextTargetNode = null;
 
-    const box = editor.append("xhtml:div")
-        .style("width", w + "px")
-        .style("height", h + "px")
-        .style("background", "#fff")
-        .style("border", "1px solid #666")
-        .style("padding", "4px")
-        .style("box-sizing", "border-box");
+    function hideContextMenu() {
+        node_menu.style("display", "none");
+        d3.selectAll(".has-submenu").classed("open", false);
+    }
 
-    box.append("xhtml:input")
-        .attr("class", "edit-font-size")
-        .style("width", "100%")
-        .property("value", getNodeFontSize(d) || "")
-        .each(function() {
-            activeExprInput = this;
-        });
+    bindNodeContextMenu(node_rect);
 
-    const row = box.append("xhtml:div")
-        .style("margin-top", "6px")
-        .style("text-align", "right");
+    d3.select("body").on("click.contextmenu", function() {
+        hideContextMenu();
+    });
 
-    row.append("xhtml:button")
-        .text("OK")
-        .on("click", function() {
-            const el = editor.node();
-            const newFontSize = el.querySelector(".edit-font-size").value.trim();
-            if (newFontSize === "") {
-                removeNodeFontSize(d);
-            } else {
-                console.log(newFontSize);
-                setNodeFontSize(d, newFontSize);
-            }
-            g.selectAll(".node-fontsize-editor").remove();
-            update(root, data_relation);
-        });
+    node_menu.on("click", function() {
+        d3.event.stopPropagation();
+    });
 
-    row.append("xhtml:button")
-        .text("Cancel")
-        .style("margin-left", "4px")
-        .on("click", function() {
-            g.selectAll(".node-fontsize-editor").remove();
-        });
-    setTimeout(function() {
-        const input = editor.node().querySelector(".edit-font-size");
-        if (input) input.focus();
-    }, 0);
+    // メニューのノード設定を開く
+    d3.select("#menu-item-node-setting").on("click", function() {
+        d3.event.stopPropagation();
+        const item = d3.select(this);
+        const isOpen = item.classed("open");
+        d3.selectAll(".has-submenu").classed("open", false);
+        item.classed("open", !isOpen);
+    });
 
-}
-function openDefaultFontSizeEditor(d) {
-    g.selectAll(".default-fontsize-editor").remove();
-    activeExprInput = null;
-    editingNodeId = null;
+    // メニューの全体設定を開く
+    d3.select("#menu-item-tree-setting").on("click", function() {
+        d3.event.stopPropagation();
+        const me = d3.select(this);
+        const isOpen = me.classed("open");
+        d3.selectAll(".has-submenu").classed("open", false);
+        me.classed("open", !isOpen);
+    });
 
-    const w = 200;
-    const h = 70;
-    const x = nodePosX(d) + 80;
-    const y = nodePosY(d) - h / 2;
+    // メニューのデフォルト設定を開く
+    d3.select("#menu-item-default-setting").on("click", function() {
+        d3.event.stopPropagation();
+        const me = d3.select(this);
+        const isOpen = me.classed("open");
+        d3.selectAll(".has-submenu").classed("open", false);
+        me.classed("open", !isOpen);
+    });
 
-    const editor = g.append("foreignObject")
-        .attr("class", "default-fontsize-editor")
-        .attr("x", x)
-        .attr("y", y)
-        .attr("width", w)
-        .attr("height", h);
+    // メニューの子ノード追加の処理
+    d3.select("#menu-item-child").on("click", function() {
+        if (!contextTargetNode) return;
+        parent_node = contextTargetNode;
+        insert_child(parent_node);
+        hideContextMenu();
+    });
 
-    const box = editor.append("xhtml:div")
-        .style("width", w + "px")
-        .style("height", h + "px")
-        .style("background", "#fff")
-        .style("border", "1px solid #666")
-        .style("padding", "4px")
-        .style("box-sizing", "border-box");
+    // メニューのコピーの処理
+    d3.select("#menu-item-copy").on("click", function() {
+        if (!contextTargetNode) return;
+        copy_node(contextTargetNode);
+        node_menu.style("display", "none");
+    });
 
-    box.append("xhtml:input")
-        .attr("class", "edit-font-size")
-        .style("width", "100%")
-        .property("value", getNodeFontSizeDefault(root) || "");
-        // .each(function() {
-        //     activeExprInput = this;
+    // メニューの子としてペーストの処理
+    d3.select("#menu-item-paste").on("click", function() {
+        if (!contextTargetNode) return;
+        paste_node(contextTargetNode);
+        node_menu.style("display", "none");
+    });
+
+    // メニューの名前・式変更の処理
+    d3.select("#menu-item-change").on("click", function() {
+        console.log("menu-item-change click");
+        if (!contextTargetNode) return;
+        console.log(getNodeName(contextTargetNode));
+        change_node(contextTargetNode);
+        node_menu.style("display", "none");
+    });
+
+    // メニューの削除の処理
+    d3.select("#menu-item-delete").on("click", function() {
+        if (!contextTargetNode) return;
+        delete_node(contextTargetNode);
+        node_menu.style("display", "none");
+    });
+
+    // メニューの位置リセットの処理
+    d3.select("#menu-item-posreset").on("click", function() {
+        if (!contextTargetNode) return;
+        posreset_node(contextTargetNode);
+        node_menu.style("display", "none");
+    });
+
+    // メニューの位置リセット（子含む）の処理
+    d3.select("#menu-item-posreset-tree").on("click", function() {
+        if (!contextTargetNode) return;
+        contextTargetNode.descendants().forEach(d => posreset_node(d));
+        node_menu.style("display", "none");
+    });
+
+    // メニューのフォントの種類の処理
+    d3.select("#menu-node-font").on("click", function() {
+        if (!contextTargetNode) return;
+        // openNodeFontEditor(contextTargetNode);
+        genericEditor(contextTargetNode, getNodeFontFamily(contextTargetNode), function_node_font);
+        node_menu.style("display", "none");
+    });
+    function function_node_font(node, newValue) {
+        if (newValue === "") {
+            removeNodeFontFamily(node);
+        } else {
+            setNodeFontFamily(node, newValue);
+        }
+        update(root, data_relation);
+    }
+
+    // メニューのフォントサイズの処理
+    d3.select("#menu-node-fontsize").on("click", function() {
+        if (!contextTargetNode) return;
+        // openNodeFontSizeEditor(contextTargetNode);
+        genericEditor(contextTargetNode, getNodeFontSize(contextTargetNode), function_node_fontsize);
+        node_menu.style("display", "none");
+    });
+    function function_node_fontsize(node, newValue) {
+        if (newValue === "") {
+            removeNodeFontSize(node);
+        } else {
+            setNodeFontSize(node, newValue);
+        }
+        update(root, data_relation);
+    }
+
+    // メニューのフォーマットの処理
+    d3.select("#menu-node-format").on("click", function() {
+        if (!contextTargetNode) return;
+        genericEditor(contextTargetNode, getNodeFormat(contextTargetNode), function_node_format);
+        node_menu.style("display", "none");
+    });
+    function function_node_format(node, newValue) {
+        if (newValue === "") {
+            removeNodeFormat(node);
+        } else {
+            setNodeFormat(node, newValue);
+            console.log(newValue);
+        }
+        create_disp(node);
+        update(root, data_relation);
+    }
+
+    // メニューのメモ編集の処理
+    d3.select("#menu-node-memo").on("click", function() {
+        if (!contextTargetNode) return;
+        genericEditor(contextTargetNode, getNodeMemo(contextTargetNode), function_node_memo);
+        node_menu.style("display", "none");
+    });
+    function function_node_memo(node, newValue) {
+        if (newValue === "") {
+            removeNodeMemo(node);
+        } else {
+            setNodeMemo(node, newValue);
+        }
+        // update(root, data_relation);
+    }
+
+    // メニューのデフォルト設定のフォントの種類の処理
+    d3.select("#menu-default-font").on("click", function() {
+        if (!contextTargetNode) return;
+        genericEditor(contextTargetNode, getNodeFormat(contextTargetNode), function_default_font);
+        // openDefaultFontEditor(contextTargetNode);
+        node_menu.style("display", "none");
+    });
+    function function_default_font(node, newValue) {
+        if (newValue === "") {
+            removeNodeFontFamilyDefault(root);
+        } else {
+            setNodeFontFamilyDefault(root, newValue);
+        }
+        update(root, data_relation);
+    }
+
+    // メニューのデフォルト設定のフォントサイズの処理
+    d3.select("#menu-default-fontsize").on("click", function() {
+        if (!contextTargetNode) return;
+        // openDefaultFontSizeEditor(contextTargetNode);
+        genericEditor(contextTargetNode, getNodeFormat(contextTargetNode), function_default_fontsize);
+        node_menu.style("display", "none");
+    });
+    function function_default_fontsize(node, newValue) {
+        if (newValue === "") {
+            removeNodeFontSizeDefault(root);
+        } else {
+            setNodeFontSizeDefault(root, newValue);
+        }
+        update(root, data_relation);
+    }
+
+
+    document.getElementById("menu-node-color-picker").addEventListener("change", function(e) {
+        e.stopPropagation();
+        e.preventDefault();
+
+        if (!contextTargetNode) return;
+
+        g.selectAll(".node-editor").remove();
+        // TODO 色変更の操作後、別のメニューの操作ダイアログがでない
+        
+        console.log(this.value);
+        setNodeColor(contextTargetNode, this.value);
+        update(root, data_relation);
+        hideContextMenu();
+    });
+
+    document.getElementById("menu-default-color-picker").addEventListener("change", function(e) {
+        e.stopPropagation();
+        setNodeColorDefault(root, this.value);
+        update(root, data_relation);
+        hideContextMenu();
+    });
+
+                //     <li id="menu-tree-height">全体縦...</li>
+                // <li id="menu-tree-width">全体横...</li>
+    // メニューの全体設定の縦の処理
+    d3.select("#menu-tree-height").on("click", function() {
+        if (!contextTargetNode) return;
+        genericEditor(contextTargetNode, svg.attr("height"), function_tree_heihgt);
+        node_menu.style("display", "none");
+    });
+    function function_tree_heihgt(node, newValue) {
+        if (newValue !== "") {
+            svg_height_min = newValue;
+            resize();
+        }
+        update(root, data_relation);
+    }
+
+    // メニューの全体設定の横の処理
+    d3.select("#menu-tree-width").on("click", function() {
+        if (!contextTargetNode) return;
+        genericEditor(contextTargetNode, svg.attr("width"), function_tree_width);
+        node_menu.style("display", "none");
+    });
+    function function_tree_width(node, newValue) {
+        if (newValue !== "") {
+            svg_width_min = newValue;
+            resize();
+        }
+        update(root, data_relation);
+    }
+
+//     let node_width = 80;
+// let node_height = 56;
+// let separate1 = 1;
+// let separate2 = 2;
+//                 <li id="menu-tree-gap_x">ノード横間隔...</li>
+//                 <li id="menu-tree-gap_y">ノード縦間隔...</li>
+//                 <li id="menu-tree-separate1">兄弟間隔...</li>
+//                 <li id="menu-tree-separate2">従兄弟間隔...</li>
+    // メニューの全体設定のノード横間隔の処理
+    d3.select("#menu-tree-gap_x").on("click", function() {
+        if (!contextTargetNode) return;
+        genericEditor(contextTargetNode, node_width, function_tree_gap_x);
+        node_menu.style("display", "none");
+    });
+    function function_tree_gap_x(node, newValue) {
+        if (newValue !== "") {
+            node_width = Number(newValue);
+            // console.log(node_width);
+            // treeLayout = d3.tree()
+            //     .nodeSize([node_height , node_width]);   2026/09/21 自分で位置を計算するので不要になった
+            resize();
+            // root.descendants().forEach(function(d) {
+            //     console.log(getNodeName(d), d.x, d.y);
+            // });
+            // const currentNodeSize = treeLayout.nodeSize();
+            // console.log(currentNodeSize);
+        }
+        update(root, data_relation);
+        // root.descendants().forEach(function(d) {
+        //     console.log(getNodeName(d), d.x, d.y);
         // });
+    }
 
-    const row = box.append("xhtml:div")
-        .style("margin-top", "6px")
-        .style("text-align", "right");
+        // メニューの全体設定のノード横間隔の処理
+    d3.select("#menu-tree-gap_y").on("click", function() {
+        if (!contextTargetNode) return;
+        genericEditor(contextTargetNode, node_height, function_tree_gap_y);
+        node_menu.style("display", "none");
+    });
+    function function_tree_gap_y(node, newValue) {
+        if (newValue !== "") {
+            node_height = Number(newValue);
+            // treeLayout = d3.tree()
+            //     .nodeSize([node_height , node_width]);   2026/09/21 自分で位置を計算するので不要になった
+            resize();
+        }
+        update(root, data_relation);
+    }
 
-    row.append("xhtml:button")
-        .text("OK")
-        .on("click", function() {
-            const el = editor.node();
-            const newFontSize = el.querySelector(".edit-font-size").value.trim();
-            if (newFontSize === "") {
-                removeNodeFontSizeDefault(root);
-            } else {
-                console.log(newFontSize);
-                setNodeFontSizeDefault(root, newFontSize);
-            }
-            g.selectAll(".default-fontsize-editor").remove();
-            update(root, data_relation);
-        });
-
-    row.append("xhtml:button")
-        .text("Cancel")
-        .style("margin-left", "4px")
-        .on("click", function() {
-            g.selectAll(".default-fontsize-editor").remove();
-        });
-    setTimeout(function() {
-        const input = editor.node().querySelector(".edit-font-size");
-        if (input) input.focus();
-    }, 0);
-
-}
-
-function openNodeFormatEditor(d) {
-    g.selectAll(".node-format-editor").remove();
-    activeExprInput = null;
-    editingNodeId = null;
-
-    const w = 200;
-    const h = 70;
-    const x = nodePosX(d) + 80;
-    const y = nodePosY(d) - h / 2;
-
-    const editor = g.append("foreignObject")
-        .attr("class", "node-format-editor")
-        .attr("x", x)
-        .attr("y", y)
-        .attr("width", w)
-        .attr("height", h);
-
-    const box = editor.append("xhtml:div")
-        .style("width", w + "px")
-        .style("height", h + "px")
-        .style("background", "#fff")
-        .style("border", "1px solid #666")
-        .style("padding", "4px")
-        .style("box-sizing", "border-box");
-
-    box.append("xhtml:input")
-        .attr("class", "edit-format")
-        .style("width", "100%")
-        .property("value", getNodeFormat(d) || "")
-        .each(function() {
-            activeExprInput = this;
-        });
-
-    const row = box.append("xhtml:div")
-        .style("margin-top", "6px")
-        .style("text-align", "right");
-
-    row.append("xhtml:button")
-        .text("OK")
-        .on("click", function() {
-            const el = editor.node();
-            const newFormat = el.querySelector(".edit-format").value.trim();
-            console.log(newFormat);
-            if (newFormat === "") {
-                removeNodeFormat(d);
-            } else {
-                setNodeFormat(d, newFormat);
-                console.log(newFormat);
-                // TODO ノードのdisp書換
-            }
-            g.selectAll(".node-format-editor").remove();
-            create_disp(d);
-            update(root, data_relation);
-        });
-    row.append("xhtml:button")
-        .text("Cancel")
-        .style("margin-left", "4px")
-        .on("click", function() {
-            g.selectAll(".node-fontsize-editor").remove();
-        });
-    setTimeout(function() {
-        const input = editor.node().querySelector(".edit-fonrmat");
-        if (input) input.focus();
-    }, 0);
 
 }
 
@@ -2185,8 +2304,8 @@ function resize() {
     // 3. 余白（マージン）の設定
     const margin = { top: 40, right: 40, bottom: 40, left: 40 };
 
-    const svgWidth = Math.max((yExtent[1]) + margin.left + margin.right + node_size_x*2,800);
-    const svgHeight = Math.max((xExtent[1]) + margin.top + margin.bottom + node_size_y*5,900);
+    const svgWidth = Math.max((yExtent[1]) + margin.left + margin.right + node_width*2, svg_width_min);
+    const svgHeight = Math.max((xExtent[1]) + margin.top + margin.bottom + node_height*5, svg_height_min);
     // console.log(svgWidth, svgHeight);
 
     // 5. SVG要素にサイズを適用

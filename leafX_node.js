@@ -245,19 +245,23 @@ function setNodeColor(d, color) {
 }
 
 function getNodeFormat(d) {
-    let format = d.data.getAttribute("format");
-    if (! format) {
-        // const rootNode = d.ancestors ? d.ancestors().pop() : d;
-        // format = rootNode.data.getAttribute("format_default") || null;
-        format = "";
-    }
-    return format;
+    return d.data.getAttribute("format");
 }
 function setNodeFormat(d, newformat) {
     d.data.setAttribute("format", newformat);
 }
 function removeNodeFormat(d) {
     d.data.removeAttribute("format");
+}
+
+function getNodeMemo(d) {
+    return d.data.getAttribute("memo");
+}
+function setNodeMemo(d, newMemo) {
+    d.data.setAttribute("memo", newMemo);
+}
+function removeNodeMemo(d) {
+    d.data.removeAttribute("memo");
 }
 
 function get_min_rectW_default(root) {
