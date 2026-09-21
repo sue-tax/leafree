@@ -255,13 +255,53 @@ function removeNodeFormat(d) {
 }
 
 function getNodeMemo(d) {
-    return d.data.getAttribute("memo");
+    return Number(d.data.getAttribute("memo")) || undefined;
 }
 function setNodeMemo(d, newMemo) {
     d.data.setAttribute("memo", newMemo);
 }
 function removeNodeMemo(d) {
     d.data.removeAttribute("memo");
+}
+
+function getNodePadWidth(d) {
+    return Number(d.data.getAttribute("pad_width")) || undefined;
+}
+function setNodePadWidth(d, value) {
+    d.data.setAttribute("pad_width", value);
+}
+function removeNodePadWidth(d) {
+    d.data.removeAttribute(d, "pad_width");
+}
+
+function getNodePadHeightChild(d) {
+    return Number(d.data.getAttribute("pad_height_child")) || undefined;
+}
+function setNodePadHeightChild(d, value) {
+    d.data.setAttribute("pad_height_child", value);
+}
+function removeNodePadHeightChild(d) {
+    d.data.removeAttribute(d, "pad_height_child");
+}
+
+function getNodePadHeightBrother(d) {
+    return Number(d.data.getAttribute("pad_height_brother")) || undefined;
+}
+function setNodePadHeightBrother(d, value) {
+    d.data.setAttribute("pad_height_brother", value);
+}
+function removeNodePadHeightBrother(d) {
+    d.data.removeAttribute(d, "pad_height_brother");
+}
+
+function getNodePadHeightParent(d) {
+    return d.data.getAttribute("pad_height_parent");
+}
+function setNodePadHeightParent(d, value) {
+    d.data.setAttribute("pad_height_parent", value);
+}
+function removeNodePadHeightParent(d) {
+    d.data.removeAttribute(d, "pad_height_parent");
 }
 
 function get_min_rectW_default(root) {

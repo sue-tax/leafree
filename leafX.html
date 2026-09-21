@@ -212,14 +212,20 @@ let node_height = 200; //80;
 let separate1 = 1;
 let separate2 = 1.5; //1.2;
 
+let dist_width = 160;
+// pad_width
+let dist_height_child = 10;
+// pad_height_child
+let dist_height_brother = 60;
+// pad_heigth_brother
+let dist_height_parent = 80;
+// pad_height_parent
 
-// treeLayout = d3.tree()
-//     // .nodeSize([node_size_y * 12, node_size_x])
-//     .nodeSize([node_height, node_width])
-//     .separation(function(a, b) {
-//         // return a.parent === b.parent ? 5 : 4;
-//         return a.parent === b.parent ? separate1 : separate2;
-//     })
+// ノードの横幅に余裕を持たす
+let pad_rect_width = 8;
+// ノードの縦に余裕を持たす
+let pad_rect_height = 3;
+
 
 const node_size_x = 80;
 const node_size_y = 14;
@@ -263,36 +269,6 @@ const xmlStringMin = `
 //     </node>
 // </node>
 // `;
-// const xmlString =`
-// <node memo="tooltip memo">
-//     <name>root</name>
-//     <expr>1</expr>
-//     <node font-size="24px">
-//         <name>A</name>
-//         <expr>='root'</expr>
-//         <node>
-//             <name>A</name>
-//             <expr>"0"</expr>
-//         </node>
-//         <node  font-family="MS Mincho" font-size="72px">
-//             <name>B</name>
-//             <expr>='A'</expr>
-//             <node>
-//                 <name>b</name>
-//                 <expr>='a'</expr>
-//             </node>
-//         </node>
-//         <node font-family="MS Mincho" font-size="16px">
-//             <name>C</name>
-//             <expr>=concat('a',"ABC","1234567890DDDDDDDDDDDDDDDDDDDDDDDDDあいう")</expr>
-//             <node font-family="MS Mincho" font-size="40px">
-//                 <name>a</name>
-//                 <expr>"abc"</expr>
-//             </node>
-//         </node>
-//     </node>
-// </node>
-// `;
 const xmlString =`
 <node memo="tooltip memo">
     <name>root</name>
@@ -300,45 +276,75 @@ const xmlString =`
     <node font-size="24px">
         <name>A</name>
         <expr>='root'</expr>
+        <node>
+            <name>A</name>
+            <expr>"0"</expr>
+        </node>
+        <node  font-family="MS Mincho" font-size="72px">
+            <name>B</name>
+            <expr>='A'</expr>
             <node>
-                <name>AA</name>
-                <expr>"0"</expr>
+                <name>b</name>
+                <expr>='a'</expr>
             </node>
-            <node>
-                <name>AB</name>
-                <expr>"0"</expr>
+        </node>
+        <node font-family="MS Mincho" font-size="16px" pad_width="10">
+            <name>C</name>
+            <expr>=concat('a',"ABC","1234567890DDDDDDDDDDDDDDDDDDDDDDDDDあいう")</expr>
+            <node font-family="MS Mincho" font-size="40px">
+                <name>a</name>
+                <expr>"abc"</expr>
             </node>
-    </node>
-    <node font-size="24px">
-        <name>B</name>
-        <expr>='root'</expr>
-            <node>
-                <name>BA</name>
-                <expr>"0"</expr>
-            </node>
-    </node>
-    <node font-size="24px">
-        <name>C</name>
-        <expr>='root'</expr>
-            <node>
-                <name>CA</name>
-                <expr>"0"</expr>
-            </node>
-            <node>
-                <name>CB</name>
-                <expr>"0"</expr>
-            </node>
-    </node>
-    <node font-size="24px">
-        <name>D</name>
-        <expr>='root'</expr>
-            <node>
-                <name>DA</name>
-                <expr>"0"</expr>
-            </node>
+        </node>
     </node>
 </node>
 `;
+// const xmlString =`
+// <node memo="tooltip memo">
+//     <name>root</name>
+//     <expr>1</expr>
+//     <node font-size="24px">
+//         <name>A</name>
+//         <expr>='root'</expr>
+//             <node>
+//                 <name>AA</name>
+//                 <expr>"0"</expr>
+//             </node>
+//             <node>
+//                 <name>AB</name>
+//                 <expr>"0"</expr>
+//             </node>
+//     </node>
+//     <node font-size="24px">
+//         <name>B</name>
+//         <expr>='root'</expr>
+//             <node>
+//                 <name>BA</name>
+//                 <expr>"0"</expr>
+//             </node>
+//     </node>
+//     <node font-size="24px">
+//         <name>C</name>
+//         <expr>='root'</expr>
+//             <node>
+//                 <name>CA</name>
+//                 <expr>"0"</expr>
+//             </node>
+//             <node>
+//                 <name>CB</name>
+//                 <expr>"0"</expr>
+//             </node>
+//     </node>
+//     <node font-size="24px">
+//         <name>D</name>
+//         <expr>='root'</expr>
+//             <node>
+//                 <name>DA</name>
+//                 <expr>"0"</expr>
+//             </node>
+//     </node>
+// </node>
+// `;
 // const xmlString =`
 // <node memo="tooltip memo">
 //     <name>root</name>
@@ -411,7 +417,17 @@ root.descendants()
     .forEach(d => {d.id = ++nodeCounter; setNodeID(d, d.id);})
 calcAll(root);
 setNode(root);
+calcPosition(root);
 create_relation();
+
+
+// function print_node(node) {
+//     console.log(getNodeName(node));
+// }
+// console.log("eachAfter");
+// root.eachAfter(print_node);
+// console.log("eachBefore");
+// root.eachBefore(print_node);
 
 // treeLayout = d3.tree().nodeSize([node_size_x, node_size_y * 3]);
 
@@ -505,7 +521,7 @@ let isRealDrag = false;
 var drag = d3.drag()
     .clickDistance(10)
     .on("start", function(d) {
-        console.log("drag start");
+        // console.log("drag start");
         d3.select(this).classed("dragging", true);
         // g.selectAll(".node").style("pointer-events", "auto");
         // d3.select(this).style("pointer-events", "none")
@@ -648,11 +664,6 @@ var drag = d3.drag()
                         console.log(renameName);
                         setNodeName(d, renameName);
                     }
-                    // --- 2. 新しい親に自分を追加 ---
-                    // if (targetData.data) {
-                    //     if (!targetData.data.children) targetData.data.children = [];
-                    //     targetData.data.children.push(d.data);
-                    // }
                     if (targetData.data) {
                         targetData.data.appendChild(d.data);
                     }
@@ -672,16 +683,16 @@ var drag = d3.drag()
             d.descendants().forEach(function(node) {
                 var key = node.id; // || node.data.id || JSON.stringify(node.data.name);
                 var original = originCoordinates[key];
-                console.log(key, original);
+                // console.log(key, original);
                 if (original) {
-                    console.log(node.x, node.y, getNodeCustomX(node), getNodeCustomY(node));
+                    // console.log(node.x, node.y, getNodeCustomX(node), getNodeCustomY(node));
                     node.x = original.x;
                     node.y = original.y;
                     if (original.custumX) {
                         setNodeCustomX(node, original.customX);
                         setNodeCustomY(node, original.customY);
                     } else {
-                        resetNodeCustum(node);
+                        resetNodeCustom(node);
                     }
                     // setNodeCustomX(node, original.customX?? node.x);
                     // setNodeCustomY(node, original.customY?? node.y);
@@ -707,29 +718,30 @@ var drag = d3.drag()
         }
         // console.log(d);
         self.style('pointer-events', null);
+        calcPosition(root);
         update(root, data_relation); 
     });
 d3.select("#save-btn").on("click", async function() {
     event.preventDefault();
     event.stopPropagation();
     event.preventDefault();
-    console.log("before save", root);
+    // console.log("before save", root);
     await saveDataToXML(root.data, null);
-    console.log("after save", root);
+    // console.log("after save", root);
 });
 
-    // TODO フォルダ指定が機能していない
-        var load_options = {
-            id : "leafree-load",
-            startIn: "documents",
-            types: [{
-            description: "データファイル",
-            accept: {
-                "application/json": [".json"],
-                "text/csv": [".csv"]
-            }
-            }]
-        };
+// TODO フォルダ指定が機能していない
+var load_options = {
+    id : "leafree-load",
+    startIn: "documents",
+    types: [{
+        description: "データファイル",
+        accept: {
+            "application/json": [".json"],
+            "text/csv": [".csv"]
+        }
+    }]
+};
 
 d3.select("#load-btn").on("click", async function() {
     let xmlDoc = await loadXMLToData();
@@ -791,11 +803,13 @@ d3.select("#load-btn").on("click", async function() {
         calcAll(root);
         // console.log("after calcAll", root);
         setNode(root);
+        
         data_relation = [];
         create_relation();
         // console.log(data_relation);
         // treeLayout(root);    2026/09/21 自分で位置を計算するので不要になった
-        treeArange(root);
+        calcPosition(root);
+        // treeArange(root);
 
         root.descendants()
             .forEach(d => {
@@ -811,6 +825,7 @@ d3.select("#load-btn").on("click", async function() {
         update(root, data_relation);
     }
 });
+
 window.addEventListener("beforeunload", function() {
     console.log("page unload");
 });
@@ -819,6 +834,125 @@ let clipboardNode = null;
 
 update(root, data_relation);
 resize();
+
+
+
+
+// 独自に各ノードの表示位置を計算する
+function calcPosition(root) {
+    root.descendants().forEach(d => {
+        d.pa_x = 0;
+    })
+    root.eachBefore(calcPositionEach);
+}
+function calcPositionEach(node) {
+    // console.log("calcPositionEach", getNodeName(node));
+    let parent = node.parent;
+    if (parent === null) {
+        // ルートノード
+        node.x = 50;
+        node.y = 0;
+    } else {
+        node.x = parent.ch_x;
+        node.y = parent.ch_y;
+        const pa_x = parent.pa_x;
+        if (pa_x) {
+            // console.log(pa_x);
+            node.x = Math.max(node.x, pa_x);
+        }
+    }
+    // console.log(node.x, node.y);
+
+    calcSize(node);
+    
+    const pad_width = getNodePadWidth(node);
+
+    if (pad_width) {
+        node.ch_y = node.y + node.w + pad_width;
+    } else {
+        node.ch_y = node.y + dist_width;
+    }
+    const pad_height_child  = getNodePadHeightChild(node);
+    if (pad_height_child) {
+        node.ch_x = node.x + node.h + pad_height_child;
+    } else {
+        node.ch_x = node.x + dist_height_child;
+    }
+    if (parent !== null) {
+        const pad_height_brother = getNodePadHeightBrother(node);
+        if (pad_height_brother) {
+            parent.ch_x = node.x + node.h + pad_height_brother;
+        } else {
+            parent.ch_x = node.x + dist_height_brother;
+        }
+        let grand_p = parent.parent;
+        if (grand_p !== null) {
+            let parent_x = 0;
+            const pad_height_parent = getNodePadHeightParent(node);
+            if (pad_height_parent) {
+                parent_x = node.x + node.h + pad_height_parent;
+            } else {
+                parent_x = node.x + dist_height_parent;
+            }
+            // console.log(parent_x);
+            do {
+                const pad_height_parent = getNodePadHeightParent(parent);
+                if (pad_height_parent) {
+                    parent_x = Math.max(parent_x, parent.x + parent.h + pad_height_parent);
+                } else {
+                    parent_x = Math.max(parent_x, parent.x + dist_height_parent);
+                }
+                // console.log(parent_x);
+                grand_p.pa_x = parent_x;
+                parent = grand_p;
+                grand_p = parent.parent;
+            } while(grand_p !== null);
+        }
+    }
+    return;
+}
+
+function calcSize(node) {
+    const min_rectW_default = get_min_rectW_default(root) ?? node_size_x;
+    const min_rectH_default = get_min_rectH_default(root) ?? node_size_y;
+    const font_family_default = getNodeFontFamilyDefault(root);
+    const font_size_default = getNodeFontSizeDefault(root);
+
+    let font_family = getNodeFontFamily(node);
+    if (! font_family) {
+        font_family = getNodeFontFamilyDefault(root);
+        if (! font_family) {
+            font_family = font_family_system;
+        }
+    }
+    let font_size = getNodeFontSize(node);
+    if (! font_size) {
+        font_size = getNodeFontSizeDefault(root);
+        if (! font_size) {
+            font_size = font_size_system;
+        }
+    }
+    const metrics = getTextSize(getNodeDisp(node), font_family, font_size); 
+    const matchW = metrics.width + pad_rect_width;
+    const matchH = metrics.height + pad_rect_height;
+    // console.log(matchW);
+    // console.log("matchH", matchH);
+    let w = getNodeRectW(node);
+    if (w === undefined) {
+        w = Math.max(matchW, min_rectW_default); 
+    }
+    // console.log("================", getNodeName(d), w);
+    let h = getNodeRectH(node);
+    if (h === undefined) {
+        h = Math.max(matchH, min_rectH_default);
+    }
+    // console.log("----------------", getNodeName(d), h);
+    node.font_family = font_family;
+    node.font_size = font_size;
+    node.w = w;
+    node.h = h;
+    return;
+}
 
 function cloneTreeData(data) {
     return data.cloneNode(true);    //structuredClone(data);
@@ -867,7 +1001,7 @@ function paste_node(d) {
         return Array.from(xmlNode.children).filter(child => child.tagName === "node");
     });
 
-    tree(root);
+    // tree(root);  20260921
     root.descendants()
         .forEach(d => {d.id = getNodeID(d);})
     const newParentNode = root.descendants().find( function(node) { return node.id === parentID; });
@@ -899,7 +1033,7 @@ function paste_node(d) {
              }
          });
     calcAll(root);      //TODO
-
+    calcPosition(root);
     setNode(root);
     data_relation = [];
     create_relation();
@@ -933,45 +1067,6 @@ function update(root, data_relation) {
             // console.log("positions", getNodeName(d));
         }
     });
-
-    const min_rectW_default = get_min_rectW_default(root) ?? node_size_x;
-    const min_rectH_default = get_min_rectH_default(root) ?? node_size_y;
-    const font_family_default = getNodeFontFamilyDefault(root);
-    const font_size_default = getNodeFontSizeDefault(root);
-
-    // tree レイアウト位置を計算
-    // tree(root);
-    // console.log(treeLayout.nodeSize());
-
-    // treeLayout(root);    2026/09/21 自分で位置を計算するので不要になった
-
-    // root.descendants().forEach(function(d) {
-    //     console.log(getNodeName(d), d.x, d.y);
-    // });
-
-    // const nodes = root.descendants().filter(d => (getNodeName(d) !== "root"));
-    // let minX = d3.min(nodes, d => {
-    //     const customX = getNodeCustomX(d);
-    //     return customX !== undefined ? customX : d.x;
-    // });
-    // console.log("minX", minX);
-
-    treeArange(root);
-
-
-
-    // root.descendants().forEach(function(d) {
-    //     console.log(getNodeName(d), d.x, d.y);
-    // });
-
-    // TODO ドラッグで移動した際に、問題
-    // if (minX < 0) {
-    //     minX -= 0; //50;
-    //     root.descendants().forEach(function(d) {
-    //         d.x -= minX;
-    //         console.log(getNodeName(d), d.x, d.y);
-    //     });
-    // }
 
     // 子、孫方向の位置設定
     // root.each(function(d) { d.y = d.depth * 320; });
@@ -1011,41 +1106,7 @@ function update(root, data_relation) {
     // 
     var textDisp = nodeEnter.append("text")
         .attr("class", "node-disp")
-        .attr("x", function(d) {
-                let font_family = getNodeFontFamily(d);
-                if (! font_family) {
-                    font_family = getNodeFontFamilyDefault(root);
-                    if (! font_family) {
-                        font_family = font_family_system;
-                    }
-                }
-                let font_size = getNodeFontSize(d);
-                if (! font_size) {
-                    font_size = getNodeFontSizeDefault(root);
-                    if (! font_size) {
-                        font_size = font_size_system;
-                    }
-                }
-                const metrics = getTextSize(getNodeDisp(d), font_family, font_size); 
-                const matchW = metrics.width + 5 + 3;
-                const matchH = metrics.height + 3;
-                // console.log(matchW);
-                // console.log("matchH", matchH);
-                let w = getNodeRectW(d);
-                if (w === undefined) {
-                    w = Math.max(matchW, min_rectW_default); 
-                }
-                // console.log("================", getNodeName(d), w);
-                let h = getNodeRectH(d);
-                if (h === undefined) {
-                    h = Math.max(matchH, min_rectH_default);
-                }
-                // console.log("----------------", getNodeName(d), h);
-                d.font_family = font_family;
-                d.font_size = font_size;
-                d.w = w;
-                d.h = h;
-                return w; })
+        .attr("x", function(d) { return d.w; })
         // ★ 右詰め（テキストの末尾がX座標に揃う）にする
         .attr("text-anchor", "end")
         // ★ 右端にぴったりくっつきすぎるのを防ぐため、内側に少しマージン（例: 5px）を入れる
@@ -1174,42 +1235,7 @@ function update(root, data_relation) {
         .transition()
         .duration(duration)
         // .attr("x", function(d) { return d.w; /*?d.rectW:node_size_x;*/ })
-        .attr("x", function(d) {
-                let font_family = getNodeFontFamily(d);
-                if (! font_family) {
-                    font_family = getNodeFontFamilyDefault(root);
-                    // console.log("default", font_family);
-                    if (! font_family) {
-                        font_family = font_family_system;
-                    }
-                }
-                let font_size = getNodeFontSize(d);
-                if (! font_size) {
-                    font_size = getNodeFontSizeDefault(root);
-                    if (! font_size) {
-                        font_size = font_size_system;
-                    }
-                }
-                const metrics = getTextSize(getNodeDisp(d), font_family, font_size); 
-                const matchW = metrics.width + 5 + 3;
-                const matchH = metrics.height + 3;
-                // console.log(matchW);
-                // console.log("matchH", matchH);
-                let w = getNodeRectW(d);
-                if (w === undefined) {
-                    w = Math.max(matchW, min_rectW_default); 
-                }
-                // console.log("================", getNodeName(d), w);
-                let h = getNodeRectH(d);
-                if (h === undefined) {
-                    h = Math.max(matchH, min_rectH_default);
-                }
-                // console.log("----------------", getNodeName(d), h);
-                d.font_family = font_family;
-                d.font_size = font_size;
-                d.w = w;
-                d.h = h;
-                return w; })
+        .attr("x", function(d) { return d.w; })
         .text(function(d) { return getNodeDisp(d); })
         .style("font-size", function(d) { return d.font_size;})
         .style("font-family", function(d) { return d.font_family;})
@@ -1383,6 +1409,8 @@ function update(root, data_relation) {
 
 
 function treeArange(root) {
+    return;
+
     // ノード間のスペースなど
     const basicSpace = {
     padding: 30,
@@ -1820,6 +1848,7 @@ function update_menu_set(node_rect) {
 
 function posreset_node(node) {
     resetNodeCustom(node);
+    calcPosition(root);
     update(root, data_relation);
 }
 
@@ -1844,6 +1873,7 @@ function delete_node(node) {
     cleanupEmptyChildren(node.parent);
     // cleanupEmptyChildren(root.data ? root.data : root);
     // print_root(root);
+    calcPosition(root);
     data_relation = [];
     create_relation();
     // console.log("after create_relation" ,data_relation);
@@ -2033,7 +2063,7 @@ function addChildNode(parentNode, name, expr) {
     // calcAll(root);
 
     print_root(root);
-
+    calcPosition(root);
     data_relation = [];
     create_relation();
     update(root, data_relation);
@@ -2194,6 +2224,7 @@ function addChildToRootAtPosition(name, expr, posX, posY) {
 
     setNode(root);
     new_Node(newNode, name, set_expr);
+    calcPosition(root);
     data_relation = [];
     create_relation();
     update(root, data_relation);
@@ -2279,6 +2310,7 @@ function openNodeEditor(d) {
             console.log(d);
             // calcAll(root);
             setNode(root);
+            calcPosition(root);
             data_relation = [];
             create_relation();
             update(root, data_relation);
