@@ -255,7 +255,7 @@ function removeNodeFormat(d) {
 }
 
 function getNodeMemo(d) {
-    return Number(d.data.getAttribute("memo")) || undefined;
+    return d.data.getAttribute("memo") || undefined;
 }
 function setNodeMemo(d, newMemo) {
     d.data.setAttribute("memo", newMemo);
@@ -302,6 +302,26 @@ function setNodePadHeightParent(d, value) {
 }
 function removeNodePadHeightParent(d) {
     d.data.removeAttribute(d, "pad_height_parent");
+}
+
+function getTreeDistWidth(root) {
+    return Number(root.data.getAttribute("dist_width")) || undefined;
+}
+function setTreeDistWidth(root, value) {
+    root.data.setAttribute("dist_width", value);
+}
+function removeTreeDistWidth(root) {
+    root.data.removeAttribute("dist_width");
+}
+
+function getTreeDistHeightChild(root) {
+    return Number(root.data.getAttribute("dist_height_child")) || undefined;
+}
+function setTreeDistHeightChild(root, value) {
+    root.data.setAttribute("dist_height_child", value);
+}
+function removeTreeDistHeightChild(root) {
+    root.data.removeAttribute("dist_height_child");
 }
 
 function get_min_rectW_default(root) {

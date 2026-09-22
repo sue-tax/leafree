@@ -58,7 +58,7 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     z-index: 1000;
     padding: 4px 0;
-    font-size: 14px;
+    font-size: 10px;
 }
 
 #context-menu ul {
@@ -81,6 +81,13 @@
 
 .menu-label {
     display: block;
+}
+
+.menu-item.disabled {
+    color: #999;
+    background: #f5f5f5;
+    cursor: not-allowed;
+    pointer-events: none;
 }
 
 .has-submenu > .submenu {
@@ -141,10 +148,12 @@
         <li id="menu-item-paste">子としてペースト</li>
         <li id="menu-item-change">名前・式変更...</li>
         <li id="menu-item-delete">削除</li>
-        <li id="menu-item-posreset" class="menu-separator">位置リセット</li>
+        <div class="menu-separator"></div>
+        <li id="menu-item-posreset">位置リセット</li>
         <li id="menu-item-posreset-tree">位置リセット（子含む）</li>
 
-        <li id="menu-item-node-setting" class="has-submenu menu-separator">
+        <div class="menu-separator"></div>
+        <li id="menu-item-node-setting" class="has-submenu">
             <span class="menu-label">ノード設定＞</span>
             <ul class="submenu">
                 <li id="menu-node-font">フォントの種類...</li>
@@ -157,22 +166,50 @@
                 <li id="menu-node-memo">メモ編集...</li>
                 <li id="menu-node-width">ノード幅...</li>
                 <li id="menu-node-height">ノード高さ...</li>
+                <div class="menu-separator"></div>
+                <li id="menu-node-font_doumei" class="menu-item disabled" aria-disabled="true">フォントの種類（同名）...</li>
+                <li id="menu-node-fontsize_doumei" class="menu-item disabled" aria-disabled="true">フォントサイズ（同名）...</li>
+                <li id="menu-node-color-item_doumei" class="color-menu-item">
+                    <span>色（同名）...</span>
+                    <input type="color" id="menu-node-color-picker" value="#ffffff">
+                </li>
+                <li id="menu-node-format_doumei" class="menu-item disabled" aria-disabled="true">表示形式（同名）...</li>
+                <li id="menu-node-width_doumei" class="menu-item disabled" aria-disabled="true">ノード幅（同名）...</li>
+                <li id="menu-node-height_doumei" class="menu-item disabled" aria-disabled="true">ノード高さ（同名）...</li>
+                <div class="menu-separator"></div>
+                <li id="menu-node-font_child" class="menu-item disabled" aria-disabled="true">フォントの種類（子含む）...</li>
+                <li id="menu-node-fontsize_child" class="menu-item disabled" aria-disabled="true">フォントサイズ（子含む）...</li>
+                <li id="menu-node-color-item_child" class="color-menu-item">
+                    <span>色（子含む）...</span>
+                    <input type="color" id="menu-node-color-picker" value="#ffffff">
+                </li>
+                <li id="menu-node-format_child" class="menu-item disabled" aria-disabled="true">表示形式（子含む）...</li>
+                <li id="menu-node-width_child" class="menu-item disabled" aria-disabled="true">ノード幅（子含む）...</li>
+                <li id="menu-node-height_child" class="menu-item disabled" aria-disabled="true">ノード高さ（子含む）...</li>
+                <div class="menu-separator"></div>
+                <li id="menu-node-pad_width">ノード横間隔...</li>
+                <li id="menu-node-pad_height_child">ノード親子縦間隔...</li>
+                <li id="menu-node-pad_height_brother">ノード兄弟縦間隔...</li>
+                <li id="menu-node-pad_height_parent">ノード従兄弟縦間隔...</li>
             </ul>
         </li>
 
-        <li id="menu-item-tree-setting" class="has-submenu menu-separator">
+        <div class="menu-separator"></div>
+
+        <li id="menu-item-tree-setting" class="has-submenu">
             <span class="menu-label">全体設定＞</span>
             <ul class="submenu">
                 <li id="menu-tree-height">全体縦...</li>
                 <li id="menu-tree-width">全体横...</li>
-                <li id="menu-tree-gap_x">ノード横間隔...</li>
-                <li id="menu-tree-gap_y">ノード縦間隔...</li>
-                <li id="menu-tree-separate1">兄弟間隔...</li>
-                <li id="menu-tree-separate2">従兄弟間隔...</li>
+                <li id="menu-tree-dist_width">ノード横距離...</li>
+                <li id="menu-tree-dist_height_child">ノード親子縦距離...</li>
+                <li id="menu-tree-dist_height_brother">ノード兄弟縦距離...</li>
+                <li id="menu-tree-dist_height_parent">ノード従兄弟縦距離...</li>
             </ul>
         </li>
+       <div class="menu-separator"></div>
 
-        <li id="menu-item-default-setting" class="has-submenu menu-separator">
+        <li id="menu-item-default-setting" class="has-submenu">
             <span class="menu-label">デフォルト設定＞</span>
             <ul class="submenu">
                 <li id="menu-default-font">フォントの種類...</li>
@@ -207,10 +244,10 @@ let editingNodeId = null;
 
 let nodeCounter = 0;
 
-let node_width = 160;
-let node_height = 200; //80;
-let separate1 = 1;
-let separate2 = 1.5; //1.2;
+let node_width = 160;       // resizeで、まだ使っている
+let node_height = 200; //80;    // resizeで、まだ使っている
+// let separate1 = 1;
+// let separate2 = 1.5; //1.2;
 
 let dist_width = 160;
 // pad_width
@@ -243,7 +280,7 @@ const tooltip = d3.select("body")
     .style("position", "absolute")
     .style("display", "none")
     .style("padding", "6px 8px")
-    .style("background", "rgba(0,0,0,0.8)")
+    .style("background", "gray")
     .style("color", "#fff")
     .style("border-radius", "4px")
     .style("font", "12px sans-serif")
@@ -850,7 +887,7 @@ function calcPositionEach(node) {
     let parent = node.parent;
     if (parent === null) {
         // ルートノード
-        node.x = 50;
+        node.x = 50;    // 要設定
         node.y = 0;
     } else {
         node.x = parent.ch_x;
@@ -863,21 +900,33 @@ function calcPositionEach(node) {
     }
     // console.log(node.x, node.y);
 
-    calcSize(node);
+    calcSize(node); // rectのサイズを計算する
     
     const pad_width = getNodePadWidth(node);
 
     if (pad_width) {
         node.ch_y = node.y + node.w + pad_width;
     } else {
-        node.ch_y = node.y + dist_width;
+        let value =  getTreeDistWidth(root);
+        // console.log(getNodeName(node), value);
+        if (value) {
+            node.ch_y = node.y + value;
+            // console.log(node.ch_y);
+        } else {
+            node.ch_y = node.y + dist_width;
+        }
     }
     const pad_height_child  = getNodePadHeightChild(node);
     if (pad_height_child) {
         node.ch_x = node.x + node.h + pad_height_child;
     } else {
-        node.ch_x = node.x + dist_height_child;
+        let value = getTreeDistHeightChild(root);
+        if (value) {
+            node.ch_x = node.x + value;
+        } else {}
+            node.ch_x = node.x + dist_height_child;
     }
+
     if (parent !== null) {
         const pad_height_brother = getNodePadHeightBrother(node);
         if (pad_height_brother) {
@@ -1013,7 +1062,7 @@ function paste_node(d) {
     const parentY = newParentNode.y;
     // console.log(old_parentX, old_parentY, parentX, parentY);
     // console.log("new_node", new_node);
-    print_root(root);
+    // print_root(root);
     const children = new_node.descendants();
     children.forEach(node => {
             setNodeRepExpr(node, "");
@@ -1193,6 +1242,8 @@ function update(root, data_relation) {
     nodeEnter
         .on("mouseover", function(d) {
             if (! d3.event.shiftKey) {
+                // console.log("mouseover noshift");
+                // console.log(getNodeMemo(d));
                 if (getNodeMemo(d)) {
                     tooltip
                         .style("display", "block")
@@ -1200,7 +1251,8 @@ function update(root, data_relation) {
                 }
                 return;
             } else {
-                const repExpr = getNodeRepExpr(d);
+                // console.log("mouseover shift");
+                // const repExpr = getNodeRepExpr(d);
                 if (repExpr) {
                     tooltip
                         .style("display", "block")
@@ -1209,6 +1261,7 @@ function update(root, data_relation) {
             }
         })
         .on("mousemove", function() {
+            // console.log("mousemove");
             tooltip
                 .style("left", (d3.event.pageX + 24) + "px")
                 .style("top", (d3.event.pageY - 20) + "px");
@@ -1408,73 +1461,82 @@ function update(root, data_relation) {
 }
 
 
-function treeArange(root) {
-    return;
+// function treeArange(root) {
+//     return;
 
-    // ノード間のスペースなど
-    const basicSpace = {
-    padding: 30,
-    height: 40,
-    width: 120,
-    };
+//     // ノード間のスペースなど
+//     const basicSpace = {
+//     padding: 30,
+//     height: 40,
+//     width: 120,
+//     };
 
-    //x座標の計算
-    const defineX = (wholeData, eachData, spaceInfo) => {
-        //最上位から現在のデータまでの最短ルートを取得
-        const path = wholeData.path(eachData);
-        //渡された元データがJSONのままなのでHierarchy形式に変換
-        const wholeTree = wholeData.descendants()
-        wholeTree.forEach(d => d.value);
-        //経由する各ノードのある階層から、経由地点より上に位置する末端ノードの個数を合計
-        const leaves = path.map((ancestor) => {
-            //経由地点のある階層のうちで親が同じデータを抽出
-            const myHierarchy = wholeTree.filter(
-                    (item, idx, ary) =>
-                    item.depth === ancestor.depth && item.parent === ancestor.parent);
-            //その階層における経由地点のインデックス取得
-            var myIdx = myHierarchy.findIndex((item) => 
-                    getNodeID(item) == getNodeID(ancestor));
-            //経由地点より上にあるものをフィルタリング
-            const fitered = myHierarchy.filter((hrcyItem, hrcyIdx /*, hrcyAry*/) =>
-                    hrcyIdx < myIdx);
-            //valueを集計（配列が空の時があるので、reduceの初期値に0を設定）
-            const sumValues = fitered.reduce(
-                    (previous, current, index, array) =>
-                    previous + current.value, 0);
-            return sumValues;
-        });
-        console.log(leaves);
-        //末端ノードの数を合計
-        const sum = leaves.reduce((previous, current, index, array) => previous + current);
-        return sum;
-    };
+//     //x座標の計算
+//     const defineX = (wholeData, eachData, spaceInfo) => {
+//         //最上位から現在のデータまでの最短ルートを取得
+//         const path = wholeData.path(eachData);
+//         //渡された元データがJSONのままなのでHierarchy形式に変換
+//         const wholeTree = wholeData.descendants()
+//         wholeTree.forEach(d => d.value);
+//         //経由する各ノードのある階層から、経由地点より上に位置する末端ノードの個数を合計
+//         const leaves = path.map((ancestor) => {
+//             //経由地点のある階層のうちで親が同じデータを抽出
+//             const myHierarchy = wholeTree.filter(
+//                     (item, idx, ary) =>
+//                     item.depth === ancestor.depth && item.parent === ancestor.parent);
+//             //その階層における経由地点のインデックス取得
+//             var myIdx = myHierarchy.findIndex((item) => 
+//                     getNodeID(item) == getNodeID(ancestor));
+//             //経由地点より上にあるものをフィルタリング
+//             const fitered = myHierarchy.filter((hrcyItem, hrcyIdx /*, hrcyAry*/) =>
+//                     hrcyIdx < myIdx);
+//             //valueを集計（配列が空の時があるので、reduceの初期値に0を設定）
+//             const sumValues = fitered.reduce(
+//                     (previous, current, index, array) =>
+//                     previous + current.value, 0);
+//             return sumValues;
+//         });
+//         console.log(leaves);
+//         //末端ノードの数を合計
+//         const sum = leaves.reduce((previous, current, index, array) => previous + current);
+//         return sum;
+//     };
 
-    //位置決め
-    const definePos = (treeData, spaceInfo) => {
-        treeData.each((d) => {
-            d.y = spaceInfo.padding + d.depth * spaceInfo.width;
-            const sum = defineX(treeData, d, spaceInfo);
-            d.x = spaceInfo.padding + sum * spaceInfo.height;
-        })
-    }
+//     //位置決め
+//     const definePos = (treeData, spaceInfo) => {
+//         treeData.each((d) => {
+//             d.y = spaceInfo.padding + d.depth * spaceInfo.width;
+//             const sum = defineX(treeData, d, spaceInfo);
+//             d.x = spaceInfo.padding + sum * spaceInfo.height;
+//         })
+//     }
 
-    root.sum(d => {
-        const v = Number(d.value);
-        return Number.isFinite(v) ? v : 1;
-    });
-    definePos(root, basicSpace);
-}
+//     root.sum(d => {
+//         const v = Number(d.value);
+//         return Number.isFinite(v) ? v : 1;
+//     });
+//     definePos(root, basicSpace);
+// }
 
 
-function genericEditor(node, initValue, func) {
+function genericEditor(node, initValue, func, title) {
     g.selectAll(".generic-editor").remove();
     activeExprInput = null;
     editingNodeId = null;
 
-    const w = 260;
-    const h = 70;
-    const x = nodePosX(node) + 80;
-    const y = nodePosY(node) - h / 2;
+    const w = 240;
+    const h = 100;
+    // const x = nodePosX(node) + 80;
+    // const y = nodePosY(node) - h / 2;
+
+    const svgEl = d3.select("svg").node();
+    const svgRect = svgEl.getBoundingClientRect();
+
+    let x = nodePosX(node) + 80;
+    let y = nodePosY(node) - h / 2;
+
+    x = Math.max(0, Math.min(x, svgRect.width - w));
+    y = Math.max(0, Math.min(y, svgRect.height - h));
 
     const editor = g.append("foreignObject")
         .attr("class", "generic-editor")
@@ -1491,9 +1553,14 @@ function genericEditor(node, initValue, func) {
         .style("padding", "4px")
         .style("box-sizing", "border-box");
 
+    box.append("xhtml:div")
+        .style("margin-bottom", "6px")
+        .style("font-weight", "bold")
+        .text(title || "入力");
+
     box.append("xhtml:input")
         .attr("class", "edit-generic")
-        .style("width", "100%")
+        .style("width", "95%")
         .property("value", initValue);
 
     const row = box.append("xhtml:div")
@@ -1533,7 +1600,7 @@ function bindNodeContextMenu(node_rect) {
         d3.event.stopPropagation();
 
         contextTargetNode = d;
-        console.log(contextTargetNode);
+        // console.log(contextTargetNode);
 
         const nodeColorPicker = document.getElementById("menu-node-color-picker");
         nodeColorPicker.value = getNodeColor(d) || "#ffffff";
@@ -1649,7 +1716,8 @@ function update_menu_set(node_rect) {
     d3.select("#menu-node-font").on("click", function() {
         if (!contextTargetNode) return;
         // openNodeFontEditor(contextTargetNode);
-        genericEditor(contextTargetNode, getNodeFontFamily(contextTargetNode), function_node_font);
+        genericEditor(contextTargetNode, getNodeFontFamily(contextTargetNode),
+                function_node_font, "フォントの種類");
         node_menu.style("display", "none");
     });
     function function_node_font(node, newValue) {
@@ -1665,7 +1733,8 @@ function update_menu_set(node_rect) {
     d3.select("#menu-node-fontsize").on("click", function() {
         if (!contextTargetNode) return;
         // openNodeFontSizeEditor(contextTargetNode);
-        genericEditor(contextTargetNode, getNodeFontSize(contextTargetNode), function_node_fontsize);
+        genericEditor(contextTargetNode, getNodeFontSize(contextTargetNode),
+                function_node_fontsize, "フォントのサイズ");
         node_menu.style("display", "none");
     });
     function function_node_fontsize(node, newValue) {
@@ -1680,7 +1749,8 @@ function update_menu_set(node_rect) {
     // メニューのフォーマットの処理
     d3.select("#menu-node-format").on("click", function() {
         if (!contextTargetNode) return;
-        genericEditor(contextTargetNode, getNodeFormat(contextTargetNode), function_node_format);
+        genericEditor(contextTargetNode, getNodeFormat(contextTargetNode),
+                function_node_format, "表示形式");
         node_menu.style("display", "none");
     });
     function function_node_format(node, newValue) {
@@ -1697,7 +1767,8 @@ function update_menu_set(node_rect) {
     // メニューのメモ編集の処理
     d3.select("#menu-node-memo").on("click", function() {
         if (!contextTargetNode) return;
-        genericEditor(contextTargetNode, getNodeMemo(contextTargetNode), function_node_memo);
+        genericEditor(contextTargetNode, getNodeMemo(contextTargetNode),
+                function_node_memo, "メモ（ツールチップ）");
         node_menu.style("display", "none");
     });
     function function_node_memo(node, newValue) {
@@ -1707,6 +1778,40 @@ function update_menu_set(node_rect) {
             setNodeMemo(node, newValue);
         }
         // update(root, data_relation);
+    }
+
+    // メニューのノード横間隔の処理
+    d3.select("#menu-node-pad_width").on("click", function() {
+        if (!contextTargetNode) return;
+        genericEditor(contextTargetNode, getNodePadWidth(contextTargetNode),
+                function_node_pad_width, "ノード横間隔");
+        node_menu.style("display", "none");
+    });
+    function function_node_pad_width(node, newValue) {
+        if (newValue === "") {
+            removeNodePadWidth(node);
+        } else {
+            setNodePadWidth(node, newValue);
+        }
+        calcPosition(root);
+        update(root, data_relation);
+    }
+
+    // メニューのノード親子縦間隔の処理
+    d3.select("#menu-node-pad_height_child").on("click", function() {
+        if (!contextTargetNode) return;
+        genericEditor(contextTargetNode, getNodePadHeightChild(contextTargetNode),
+                function_node_pad_height_child, "ノード親子縦間隔");
+        node_menu.style("display", "none");
+    });
+    function function_node_pad_height_child(node, newValue) {
+        if (newValue === "") {
+            removeNodePadHeightChild(node);
+        } else {
+            setNodePadHeightChild(node, newValue);
+        }
+        calcPosition(root);
+        update(root, data_relation);
     }
 
     // メニューのデフォルト設定のフォントの種類の処理
@@ -1764,8 +1869,6 @@ function update_menu_set(node_rect) {
         hideContextMenu();
     });
 
-                //     <li id="menu-tree-height">全体縦...</li>
-                // <li id="menu-tree-width">全体横...</li>
     // メニューの全体設定の縦の処理
     d3.select("#menu-tree-height").on("click", function() {
         if (!contextTargetNode) return;
@@ -1794,37 +1897,23 @@ function update_menu_set(node_rect) {
         update(root, data_relation);
     }
 
-//     let node_width = 80;
-// let node_height = 56;
-// let separate1 = 1;
-// let separate2 = 2;
-//                 <li id="menu-tree-gap_x">ノード横間隔...</li>
-//                 <li id="menu-tree-gap_y">ノード縦間隔...</li>
-//                 <li id="menu-tree-separate1">兄弟間隔...</li>
-//                 <li id="menu-tree-separate2">従兄弟間隔...</li>
-    // メニューの全体設定のノード横間隔の処理
-    d3.select("#menu-tree-gap_x").on("click", function() {
+    // メニューの全体設定のノード横距離の処理
+    d3.select("#menu-tree-dist_width").on("click", function() {
         if (!contextTargetNode) return;
-        genericEditor(contextTargetNode, node_width, function_tree_gap_x);
+        genericEditor(contextTargetNode, getTreeDistWidth(root),
+                function_tree_dist_width, "ノード横距離");
         node_menu.style("display", "none");
     });
-    function function_tree_gap_x(node, newValue) {
+    function function_tree_dist_width(node, newValue) {
         if (newValue !== "") {
-            node_width = Number(newValue);
-            // console.log(node_width);
-            // treeLayout = d3.tree()
-            //     .nodeSize([node_height , node_width]);   2026/09/21 自分で位置を計算するので不要になった
-            resize();
-            // root.descendants().forEach(function(d) {
-            //     console.log(getNodeName(d), d.x, d.y);
-            // });
-            // const currentNodeSize = treeLayout.nodeSize();
-            // console.log(currentNodeSize);
+            newNumber = Number(newValue);
+            setTreeDistWidth(root, newValue);
+        } else {
+            removeTreeDistWidth(root);
         }
+        calcPosition(root);
+        resize();
         update(root, data_relation);
-        // root.descendants().forEach(function(d) {
-        //     console.log(getNodeName(d), d.x, d.y);
-        // });
     }
 
         // メニューの全体設定のノード横間隔の処理
@@ -2062,7 +2151,7 @@ function addChildNode(parentNode, name, expr) {
 
     // calcAll(root);
 
-    print_root(root);
+    // print_root(root);
     calcPosition(root);
     data_relation = [];
     create_relation();
