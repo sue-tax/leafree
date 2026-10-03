@@ -52,12 +52,12 @@
     position: absolute;
     left: 0;
     top: 0;
-    min-width: 220px;
+    min-width: 140px;
     background: #fff;
     border: 1px solid #ccc;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     z-index: 1000;
-    padding: 4px 0;
+    padding: 2px 0;
     font-size: 10px;
 }
 
@@ -69,7 +69,7 @@
 #context-menu li {
     list-style: none;
     position: relative;
-    padding: 8px 16px;
+    padding: 4px 12px;
     white-space: nowrap;
     cursor: pointer;
     background: #fff;
@@ -132,13 +132,21 @@
     margin-top: 4px;
     padding-top: 4px;
 }
+
+@media print {
+    .no-print{
+        display: none !important;
+    }
+}
+
     </style>
 </head>
 
 <body>
     <div id="controls">
-        <button id="save-btn" type="button">XMLで保存</button>
-        <button id="load-btn" type="button">XMLファイルを読み込み</button>
+        <button id="save-btn" type="button" class="no-print">XMLで保存</button>
+        <button id="load-btn" type="button" class="no-print">XMLファイルを読み込み</button>
+        <button id="print-btn" type="button" class="no-print">印刷</button>
     </div>
 
 <div id="context-menu">
@@ -148,6 +156,8 @@
         <li id="menu-item-paste">子としてペースト</li>
         <li id="menu-item-change">名前・式変更...</li>
         <li id="menu-item-delete">削除</li>
+        <div class="menu-separator"></div>
+        <li id="menu-item-child-multi">子ノードまとめて追加...</li>
         <div class="menu-separator"></div>
         <li id="menu-item-posreset">位置リセット</li>
         <li id="menu-item-posreset-tree">位置リセット（子含む）</li>
@@ -167,30 +177,38 @@
                 <li id="menu-node-width">ノード幅...</li>
                 <li id="menu-node-height">ノード高さ...</li>
                 <div class="menu-separator"></div>
-                <li id="menu-node-font_doumei" class="menu-item disabled" aria-disabled="true">フォントの種類（同名）...</li>
-                <li id="menu-node-fontsize_doumei" class="menu-item disabled" aria-disabled="true">フォントサイズ（同名）...</li>
-                <li id="menu-node-color-item_doumei" class="color-menu-item">
-                    <span>色（同名）...</span>
-                    <input type="color" id="menu-node-color-picker" value="#ffffff">
-                </li>
-                <li id="menu-node-format_doumei" class="menu-item disabled" aria-disabled="true">表示形式（同名）...</li>
-                <li id="menu-node-width_doumei" class="menu-item disabled" aria-disabled="true">ノード幅（同名）...</li>
-                <li id="menu-node-height_doumei" class="menu-item disabled" aria-disabled="true">ノード高さ（同名）...</li>
-                <div class="menu-separator"></div>
-                <li id="menu-node-font_child" class="menu-item disabled" aria-disabled="true">フォントの種類（子含む）...</li>
-                <li id="menu-node-fontsize_child" class="menu-item disabled" aria-disabled="true">フォントサイズ（子含む）...</li>
-                <li id="menu-node-color-item_child" class="color-menu-item">
-                    <span>色（子含む）...</span>
-                    <input type="color" id="menu-node-color-picker" value="#ffffff">
-                </li>
-                <li id="menu-node-format_child" class="menu-item disabled" aria-disabled="true">表示形式（子含む）...</li>
-                <li id="menu-node-width_child" class="menu-item disabled" aria-disabled="true">ノード幅（子含む）...</li>
-                <li id="menu-node-height_child" class="menu-item disabled" aria-disabled="true">ノード高さ（子含む）...</li>
-                <div class="menu-separator"></div>
                 <li id="menu-node-pad_width">ノード横間隔...</li>
                 <li id="menu-node-pad_height_child">ノード親子縦間隔...</li>
                 <li id="menu-node-pad_height_brother">ノード兄弟縦間隔...</li>
                 <li id="menu-node-pad_height_parent">ノード従兄弟縦間隔...</li>
+            </ul>
+        </li>
+        <li id="menu-node-samename-setting" class="has-submenu">
+            <span class="menu-label">同名ノード設定＞</span>
+            <ul class="submenu">
+                <li id="menu-node-font_doumei" class="menu-item disabled" aria-disabled="true">フォントの種類（同名）...</li>
+                <li id="menu-node-fontsize_doumei" class="menu-item disabled" aria-disabled="true">フォントサイズ（同名）...</li>
+                <li id="menu-node-color-item_doumei" class="color-menu-item">
+                    <span>色（同名）...</span>
+                    <input type="color" id="menu-node-color-picker-doumei" value="#ffffff">
+                </li>
+                <li id="menu-node-format_doumei" class="menu-item disabled" aria-disabled="true">表示形式（同名）...</li>
+                <li id="menu-node-width_doumei" class="menu-item disabled" aria-disabled="true">ノード幅（同名）...</li>
+                <li id="menu-node-height_doumei" class="menu-item disabled" aria-disabled="true">ノード高さ（同名）...</li>
+            </ul>
+        </li>
+        <li id="menu-node-children-setting" class="has-submenu">
+            <span class="menu-label">子孫含むノード設定＞</span>
+            <ul class="submenu">
+                <li id="menu-node-font_child" class="menu-item disabled" aria-disabled="true">フォントの種類（子含む）...</li>
+                <li id="menu-node-fontsize_child" class="menu-item disabled" aria-disabled="true">フォントサイズ（子含む）...</li>
+                <li id="menu-node-color-item_child" class="color-menu-item">
+                    <span>色（子含む）...</span>
+                    <input type="color" id="menu-node-color-picker-child" value="#ffffff">
+                </li>
+                <li id="menu-node-format_child" class="menu-item disabled" aria-disabled="true">表示形式（子含む）...</li>
+                <li id="menu-node-width_child" class="menu-item disabled" aria-disabled="true">ノード幅（子含む）...</li>
+                <li id="menu-node-height_child" class="menu-item disabled" aria-disabled="true">ノード高さ（子含む）...</li>
             </ul>
         </li>
 
@@ -207,20 +225,35 @@
                 <li id="menu-tree-dist_height_parent">ノード従兄弟縦距離...</li>
             </ul>
         </li>
-       <div class="menu-separator"></div>
+        <div class="menu-separator"></div>
 
         <li id="menu-item-default-setting" class="has-submenu">
             <span class="menu-label">デフォルト設定＞</span>
             <ul class="submenu">
-                <li id="menu-default-font">フォントの種類...</li>
-                <li id="menu-default-fontsize">フォントサイズ...</li>
+                <li id="menu-default-font">フォントの種類（デフォルト）...</li>
+                <li id="menu-default-fontsize">フォントサイズ（デフォルト）...</li>
                 <li id="menu-default-color-item" class="color-menu-item">
-                    <span>色...</span>
+                    <span>色（デフォルト）...</span>
                     <input type="color" id="menu-default-color-picker" value="#ffffff">
                 </li>
-                <li id="menu-default-format">表示形式...</li>
+                <li id="menu-default-format">表示形式（デフォルト）...</li>
             </ul>
         </li>
+        <div class="menu-separator"></div>
+               
+        <li id="menu-display-node" class="has-submenu">
+            <span class="menu-label">ノード表示設定＞</span>
+            <ul class="submenu">
+                <li id="menu-display-node-rect">ノード枠表示</li>
+                <li id="menu-display-node-name">ノード名表示</li>
+                <li id="menu-display-node-expr">ノード内容表示</li>
+                <li id="menu-display-node-parent">ノード親パス表示</li>
+                <li id="menu-display-node-child">ノード子パス表示</li>
+                <li id="menu-display-node-src">ノード参照先リンク表示</li>
+                <li id="menu-display-node-ref">ノード参照元リンク表示</li>
+            </ul>
+        </li>
+
     </ul>
 </div>    
     <svg width="1800" height="3000"> <!--不要かも--></svg>
@@ -233,9 +266,14 @@
 <script>
 
 //TODO
-//format変更時のdisp再計算
+//デフォルト設定の残り Done
+//弟ノードの入力  これの前にノード挿入時の再計算を確認
+//兄弟ノードの順番変更
+//四角、ノード名、式、親子パス、参照リンクの表示・非表示（同名、子孫） 白とする
 //各種変更設定時(format,fontなど)　子ノード含めるパターンや同名ノードのパターン
-//Treeの縦並び表記（？）
+
+//TODO ノード追加しても、sum('*')は再計算しない
+
 
 //Go Liveを使わない
 
@@ -272,7 +310,6 @@ const font_size_system = "14px";
 
 const textMeasureCanvas = document.createElement("canvas");
 const textMeasureContext = textMeasureCanvas.getContext("2d");
-
 
 const tooltip = d3.select("body")
     .append("div")
@@ -554,7 +591,6 @@ let dragStartX = 0;
 let dragStartY = 0;
 let isRealDrag = false;
 
-
 var drag = d3.drag()
     .clickDistance(10)
     .on("start", function(d) {
@@ -758,6 +794,13 @@ var drag = d3.drag()
         calcPosition(root);
         update(root, data_relation); 
     });
+
+
+d3.select("#print-btn").on("click", function() {
+    // console.log("print_btn");
+    window.print();
+});
+
 d3.select("#save-btn").on("click", async function() {
     event.preventDefault();
     event.stopPropagation();
@@ -784,7 +827,7 @@ d3.select("#load-btn").on("click", async function() {
     let xmlDoc = await loadXMLToData();
     if (xmlDoc) {
         nodeCounter = 0;
-        console.log("load data", xmlDoc);
+        // console.log("load data", xmlDoc);
         g.selectAll("*").remove();
         // data_tree = data;
         // console.log("before hierarchy", root);
@@ -858,13 +901,16 @@ d3.select("#load-btn").on("click", async function() {
                     d.y = getNodeCustomY(d);
                 }
             });
-        resize();
+        // console.log("before resize");
+        // resize();
         update(root, data_relation);
+        // console.log("before resize");
+        resize();
     }
 });
 
 window.addEventListener("beforeunload", function() {
-    console.log("page unload");
+    // console.log("page unload");
 });
 
 let clipboardNode = null;
@@ -884,6 +930,7 @@ function calcPosition(root) {
 }
 function calcPositionEach(node) {
     // console.log("calcPositionEach", getNodeName(node));
+    node.moved = false;
     let parent = node.parent;
     if (parent === null) {
         // ルートノード
@@ -897,6 +944,62 @@ function calcPositionEach(node) {
             // console.log(pa_x);
             node.x = Math.max(node.x, pa_x);
         }
+    }
+    if (parent !== null) {
+        const pad_height_brother = getNodePadHeightBrother(node);
+        if (pad_height_brother) {
+            parent.ch_x = node.x + node.h + pad_height_brother;
+        } else {
+            const dist_height_brother_defalut = getTreeDistHeightBrother(root);
+            if (dist_height_brother_defalut) {
+                parent.ch_x = node.x + dist_height_brother_defalut;
+            } else {
+                parent.ch_x = node.x + dist_height_brother;
+            }
+        }
+        let grand_p = parent.parent;
+        if (grand_p !== null) {
+            let parent_x = 0;
+            const pad_height_parent = getNodePadHeightParent(node);
+            const dist_height_parent_default = getTreeDistHeightParent(root);
+            if (pad_height_parent) {
+                parent_x = node.x + node.h + pad_height_parent;
+            } else {
+                if (dist_height_parent_default) {
+                    parent_x = node.x + dist_height_parent_default;
+                } else {
+                    parent_x = node.x + dist_height_parent;
+
+                }
+            }
+            // console.log(parent_x);
+            do {
+                // 判断位置を要検討
+                if (parent.moved) {
+                    break;
+                }
+                const pad_height_parent = getNodePadHeightParent(parent);
+                if (pad_height_parent) {
+                    parent_x = Math.max(parent_x, parent.x + parent.h + pad_height_parent);
+                } else {
+                    if (dist_height_parent_default) {
+                        parent_x = Math.max(parent_x, parent.x + dist_height_parent_default);
+                    } else {
+                        parent_x = Math.max(parent_x, parent.x + dist_height_parent);
+                    }
+                }
+                // console.log(parent_x);
+                grand_p.pa_x = parent_x;
+                parent = grand_p;
+                grand_p = parent.parent;
+            } while(grand_p !== null);
+        }
+    }
+
+    if (getNodeCustomX(node)) {
+        node.x = getNodeCustomX(node);
+        node.y = getNodeCustomY(node);
+        node.moved = true;
     }
     // console.log(node.x, node.y);
 
@@ -917,47 +1020,19 @@ function calcPositionEach(node) {
         }
     }
     const pad_height_child  = getNodePadHeightChild(node);
+    // console.log(node.x, pad_height_child);
     if (pad_height_child) {
         node.ch_x = node.x + node.h + pad_height_child;
     } else {
         let value = getTreeDistHeightChild(root);
+        // console.log(value);
         if (value) {
             node.ch_x = node.x + value;
-        } else {}
-            node.ch_x = node.x + dist_height_child;
-    }
-
-    if (parent !== null) {
-        const pad_height_brother = getNodePadHeightBrother(node);
-        if (pad_height_brother) {
-            parent.ch_x = node.x + node.h + pad_height_brother;
         } else {
-            parent.ch_x = node.x + dist_height_brother;
-        }
-        let grand_p = parent.parent;
-        if (grand_p !== null) {
-            let parent_x = 0;
-            const pad_height_parent = getNodePadHeightParent(node);
-            if (pad_height_parent) {
-                parent_x = node.x + node.h + pad_height_parent;
-            } else {
-                parent_x = node.x + dist_height_parent;
-            }
-            // console.log(parent_x);
-            do {
-                const pad_height_parent = getNodePadHeightParent(parent);
-                if (pad_height_parent) {
-                    parent_x = Math.max(parent_x, parent.x + parent.h + pad_height_parent);
-                } else {
-                    parent_x = Math.max(parent_x, parent.x + dist_height_parent);
-                }
-                // console.log(parent_x);
-                grand_p.pa_x = parent_x;
-                parent = grand_p;
-                grand_p = parent.parent;
-            } while(grand_p !== null);
+            node.ch_x = node.x + dist_height_child;
         }
     }
+    // console.log(node.ch_x);
     return;
 }
 
@@ -1035,10 +1110,8 @@ function paste_node(d) {
     const flag = checkDuplicateNodeName(d, name);
     if (! flag) {
         name_plus = renameDuplicateNodeName(d, name);
-        setNodeName(newNode, name_plus);
+        setNodeName(d, name_plus);
     }
-
-    // new_Node(node, new_name, new_expr )
 
     const parentElement = d.data;
     parentElement.appendChild(newElement);
@@ -1124,7 +1197,7 @@ function update(root, data_relation) {
         if (positions[d.id]) {
             d.x = positions[d.id].x;
             d.y = positions[d.id].y;
-            console.log("positions", getNodeName(d));
+            // console.log("positions", getNodeName(d));
         }
     });
     // console.log("root", root);
@@ -1252,7 +1325,7 @@ function update(root, data_relation) {
                 return;
             } else {
                 // console.log("mouseover shift");
-                // const repExpr = getNodeRepExpr(d);
+                const repExpr = getNodeRepExpr(d);
                 if (repExpr) {
                     tooltip
                         .style("display", "block")
@@ -1461,70 +1534,12 @@ function update(root, data_relation) {
 }
 
 
-// function treeArange(root) {
-//     return;
-
-//     // ノード間のスペースなど
-//     const basicSpace = {
-//     padding: 30,
-//     height: 40,
-//     width: 120,
-//     };
-
-//     //x座標の計算
-//     const defineX = (wholeData, eachData, spaceInfo) => {
-//         //最上位から現在のデータまでの最短ルートを取得
-//         const path = wholeData.path(eachData);
-//         //渡された元データがJSONのままなのでHierarchy形式に変換
-//         const wholeTree = wholeData.descendants()
-//         wholeTree.forEach(d => d.value);
-//         //経由する各ノードのある階層から、経由地点より上に位置する末端ノードの個数を合計
-//         const leaves = path.map((ancestor) => {
-//             //経由地点のある階層のうちで親が同じデータを抽出
-//             const myHierarchy = wholeTree.filter(
-//                     (item, idx, ary) =>
-//                     item.depth === ancestor.depth && item.parent === ancestor.parent);
-//             //その階層における経由地点のインデックス取得
-//             var myIdx = myHierarchy.findIndex((item) => 
-//                     getNodeID(item) == getNodeID(ancestor));
-//             //経由地点より上にあるものをフィルタリング
-//             const fitered = myHierarchy.filter((hrcyItem, hrcyIdx /*, hrcyAry*/) =>
-//                     hrcyIdx < myIdx);
-//             //valueを集計（配列が空の時があるので、reduceの初期値に0を設定）
-//             const sumValues = fitered.reduce(
-//                     (previous, current, index, array) =>
-//                     previous + current.value, 0);
-//             return sumValues;
-//         });
-//         console.log(leaves);
-//         //末端ノードの数を合計
-//         const sum = leaves.reduce((previous, current, index, array) => previous + current);
-//         return sum;
-//     };
-
-//     //位置決め
-//     const definePos = (treeData, spaceInfo) => {
-//         treeData.each((d) => {
-//             d.y = spaceInfo.padding + d.depth * spaceInfo.width;
-//             const sum = defineX(treeData, d, spaceInfo);
-//             d.x = spaceInfo.padding + sum * spaceInfo.height;
-//         })
-//     }
-
-//     root.sum(d => {
-//         const v = Number(d.value);
-//         return Number.isFinite(v) ? v : 1;
-//     });
-//     definePos(root, basicSpace);
-// }
-
-
 function genericEditor(node, initValue, func, title) {
     g.selectAll(".generic-editor").remove();
     activeExprInput = null;
     editingNodeId = null;
 
-    const w = 240;
+    const w = 260;
     const h = 100;
     // const x = nodePosX(node) + 80;
     // const y = nodePosY(node) - h / 2;
@@ -1553,7 +1568,7 @@ function genericEditor(node, initValue, func, title) {
         .style("padding", "4px")
         .style("box-sizing", "border-box");
 
-    box.append("xhtml:div")
+    header = box.append("xhtml:div")
         .style("margin-bottom", "6px")
         .style("font-weight", "bold")
         .text(title || "入力");
@@ -1588,6 +1603,92 @@ function genericEditor(node, initValue, func, title) {
         .on("click", function() {
             g.selectAll(".generic-editor").remove();
         });
+
+    header.call(
+        d3.drag()
+            .container(function() {
+                return g.node();
+            })
+            .on("drag", function(event) {
+                editor
+                    .attr("x", d3.event.x)
+                    .attr("y", d3.event.y);
+            })
+    );
+
+    setTimeout(function() {
+        const input = editor.node().querySelector(".edit-generic");
+        if (input) input.focus();
+    }, 0);
+}
+
+function genericEditorMulti(node, initValue, func, title) {
+    g.selectAll(".generic-editor").remove();
+    activeExprInput = null;
+    editingNodeId = null;
+
+    const w = 300;
+    const h = 170;
+    let x = nodePosX(node) + 80;
+    let y = nodePosY(node) - h / 2;
+
+    const svgWidth = Number(d3.select("svg").attr("width"));
+    const svgHeight = Number(d3.select("svg").attr("height"));
+    x = Math.max(0, Math.min(x, svgWidth - w));
+    y = Math.max(0, Math.min(y, svgHeight - h));
+
+    const editor = g.append("foreignObject")
+        .attr("class", "generic-editor")
+        .attr("x", x)
+        .attr("y", y)
+        .attr("width", w)
+        .attr("height", h);
+
+    const box = editor.append("xhtml:div")
+        .style("width", w + "px")
+        .style("height", h + "px")
+        .style("background", "#fff")
+        .style("border", "1px solid #666")
+        .style("padding", "6px")
+        .style("box-sizing", "border-box");
+
+    box.append("xhtml:div")
+        .style("margin-bottom", "6px")
+        .style("font-weight", "bold")
+        .text(title || "入力");
+
+    box.append("xhtml:textarea")
+        .attr("class", "edit-generic")
+        .attr("rows", 5)
+        .style("width", "100%")
+        .style("height", "80px")
+        .style("resize", "none")
+        .style("box-sizing", "border-box")
+        .each(function() {
+            activeExprInput = this;
+        })        
+        .property("value", initValue);
+
+    const row = box.append("xhtml:div")
+        .style("margin-top", "6px")
+        .style("text-align", "right");
+
+    row.append("xhtml:button")
+        .text("OK")
+        .on("click", function() {
+            const el = editor.node();
+            const inputData = el.querySelector(".edit-generic").value;
+            func(node, inputData);
+            g.selectAll(".generic-editor").remove();
+        });
+
+    row.append("xhtml:button")
+        .text("Cancel")
+        .style("margin-left", "4px")
+        .on("click", function() {
+            g.selectAll(".generic-editor").remove();
+        });
+
     setTimeout(function() {
         const input = editor.node().querySelector(".edit-generic");
         if (input) input.focus();
@@ -1599,11 +1700,15 @@ function bindNodeContextMenu(node_rect) {
         d3.event.preventDefault();
         d3.event.stopPropagation();
 
+        // 要注意
         contextTargetNode = d;
         // console.log(contextTargetNode);
 
+        // console.log(getNodeName(d));
         const nodeColorPicker = document.getElementById("menu-node-color-picker");
         nodeColorPicker.value = getNodeColor(d) || "#ffffff";
+        const nodeColorPickerDefault = document.getElementById("menu-default-color-picker");
+        nodeColorPickerDefault.value = getNodeColorDefault(d) || "#ffffff";
 
         node_menu
             .style("display", "block")
@@ -1641,7 +1746,22 @@ function update_menu_set(node_rect) {
         d3.selectAll(".has-submenu").classed("open", false);
         item.classed("open", !isOpen);
     });
-
+    // メニューの子孫含むノード設定を開く
+    d3.select("#menu-node-children-setting").on("click", function() {
+        d3.event.stopPropagation();
+        const item = d3.select(this);
+        const isOpen = item.classed("open");
+        d3.selectAll(".has-submenu").classed("open", false);
+        item.classed("open", !isOpen);
+    });
+    // メニューの同名ノード設定を開く
+    d3.select("#menu-node-samename-setting").on("click", function() {
+        d3.event.stopPropagation();
+        const item = d3.select(this);
+        const isOpen = item.classed("open");
+        d3.selectAll(".has-submenu").classed("open", false);
+        item.classed("open", !isOpen);
+    });
     // メニューの全体設定を開く
     d3.select("#menu-item-tree-setting").on("click", function() {
         d3.event.stopPropagation();
@@ -1698,6 +1818,29 @@ function update_menu_set(node_rect) {
         node_menu.style("display", "none");
     });
 
+    // メニューの子ノードまとめて追加の処理
+    d3.select("#menu-item-child-multi").on("click", function() {
+        if (!contextTargetNode) return;
+        genericEditorMulti(contextTargetNode, "",
+                function_node_child_multi, "子ノードまとめて追加");
+        node_menu.style("display", "none");
+    });
+    function function_node_child_multi(node, newValue) {
+        if (newValue !== "") {
+            const lines = newValue.split(/\r?\n/);
+            lines.forEach(function(line, i) {
+                let expr = line;
+                if (expr === "") {
+                    expr = " ";
+                }
+                addChildNode(node, "_", expr);                
+            });
+        }
+        calcPosition(root);
+        update(root, data_relation);
+    }
+
+
     // メニューの位置リセットの処理
     d3.select("#menu-item-posreset").on("click", function() {
         if (!contextTargetNode) return;
@@ -1726,6 +1869,7 @@ function update_menu_set(node_rect) {
         } else {
             setNodeFontFamily(node, newValue);
         }
+        calcPosition(node);
         update(root, data_relation);
     }
 
@@ -1743,8 +1887,64 @@ function update_menu_set(node_rect) {
         } else {
             setNodeFontSize(node, newValue);
         }
+        calcPosition(node);
         update(root, data_relation);
     }
+
+    // console.log("color addEventListher");
+    // document.getElementById("menu-node-color-picker")
+    //         .addEventListener("change", function(e) {
+    //     e.stopPropagation();
+    //     e.preventDefault();
+    //     console.log("color-picker", contextTargetNode);
+
+    //     if (!contextTargetNode) return;
+
+    //     g.selectAll(".node-editor").remove();
+    //     // TODO 色変更の操作後、別のメニューの操作ダイアログがでない
+        
+    //     console.log(this.value);
+    //     setNodeColor(contextTargetNode, this.value);
+    //     update(root, data_relation);
+    //     hideContextMenu();
+    // });
+    const colorPicker = document.getElementById("menu-node-color-picker");
+    colorPicker.addEventListener("change", function(e) {
+        e.stopPropagation();
+        e.preventDefault();
+        // console.log("color-picker", contextTargetNode);
+
+        if (!contextTargetNode) return;
+
+        g.selectAll(".node-editor").remove();
+        // TODO 色変更の操作後、別のメニューの操作ダイアログがでない
+        
+        // console.log(this.value);
+        setNodeColor(contextTargetNode, this.value);
+        update(root, data_relation);
+        hideContextMenu();
+    });
+//    console.log(colorPicker);
+    d3.select("#menu-node-color-item").on("click", function() {
+        d3.event.stopPropagation();
+        if (!contextTargetNode) return;
+        // console.log("color-picker", contextTargetNode);
+        // colorPicker.value = getNodeColor(contextTargetNode) || "#ffffff";
+        // console.log(colorPicker.value);
+        // console.log(colorPicker.disabled);
+        try {
+            colorPicker.showPicker();
+        } catch (e) {
+            colorPicker.click();
+        }
+    });
+    // document.getElementById("menu-default-color-picker").addEventListener("change", function(e) {
+    //     e.stopPropagation();
+    //     setNodeColorDefault(root, this.value);
+    //     update(root, data_relation);
+    //     hideContextMenu();
+    // });
+
 
     // メニューのフォーマットの処理
     d3.select("#menu-node-format").on("click", function() {
@@ -1758,9 +1958,10 @@ function update_menu_set(node_rect) {
             removeNodeFormat(node);
         } else {
             setNodeFormat(node, newValue);
-            console.log(newValue);
+            // console.log(newValue);
         }
         create_disp(node);
+        calcPosition(node);
         update(root, data_relation);
     }
 
@@ -1814,10 +2015,149 @@ function update_menu_set(node_rect) {
         update(root, data_relation);
     }
 
+    // メニューのノード兄弟縦間隔の処理
+    d3.select("#menu-node-pad_height_brother").on("click", function() {
+        if (!contextTargetNode) return;
+        genericEditor(contextTargetNode, getNodePadHeightBrother(contextTargetNode),
+                function_node_pad_height_brother, "ノード兄弟縦間隔");
+        node_menu.style("display", "none");
+    });
+    function function_node_pad_height_brother(node, newValue) {
+        if (newValue === "") {
+            removeNodePadHeightBrother(node);
+        } else {
+            setNodePadHeightBrother(node, newValue);
+        }
+        calcPosition(root);
+        update(root, data_relation);
+    }
+    // メニューのノード従兄弟縦間隔の処理
+    d3.select("#menu-node-pad_height_parent").on("click", function() {
+        if (!contextTargetNode) return;
+        genericEditor(contextTargetNode, getNodePadHeightParent(contextTargetNode),
+                function_node_pad_height_parent, "ノード従兄弟縦間隔");
+        node_menu.style("display", "none");
+    });
+    function function_node_pad_height_parent(node, newValue) {
+        if (newValue === "") {
+            removeNodePadHeightParent(node);
+        } else {
+            setNodePadHeightParent(node, newValue);
+        }
+        calcPosition(root);
+        update(root, data_relation);
+    }
+
+    // メニューの全体設定の縦の処理
+    d3.select("#menu-tree-height").on("click", function() {
+        if (!contextTargetNode) return;
+        genericEditor(contextTargetNode, svg.attr("height"),
+                function_tree_heihgt, "全体の縦");
+        node_menu.style("display", "none");
+    });
+    function function_tree_heihgt(node, newValue) {
+        if (newValue !== "") {
+            svg_height_min = newValue;
+            resize();
+        }
+        update(root, data_relation);
+    }
+
+    // メニューの全体設定の横の処理
+    d3.select("#menu-tree-width").on("click", function() {
+        if (!contextTargetNode) return;
+        genericEditor(contextTargetNode, svg.attr("width"),
+                function_tree_width,"全体の横");
+        node_menu.style("display", "none");
+    });
+    function function_tree_width(node, newValue) {
+        if (newValue !== "") {
+            svg_width_min = newValue;
+            resize();
+        }
+        update(root, data_relation);
+    }
+
+    // メニューの全体設定のノード横距離の処理
+    d3.select("#menu-tree-dist_width").on("click", function() {
+        if (!contextTargetNode) return;
+        genericEditor(contextTargetNode, getTreeDistWidth(root),
+                function_tree_dist_width, "全体 ノード横距離");
+        node_menu.style("display", "none");
+    });
+    function function_tree_dist_width(node, newValue) {
+        if (newValue !== "") {
+            newNumber = Number(newValue);
+            setTreeDistWidth(root, newNumber);
+        } else {
+            removeTreeDistWidth(root);
+        }
+        calcPosition(root);
+        resize();
+        update(root, data_relation);
+    }
+
+    // メニューの全体設定のノード親子縦距離の処理
+    d3.select("#menu-tree-dist_height_child").on("click", function() {
+        if (!contextTargetNode) return;
+        genericEditor(contextTargetNode, getTreeDistHeightChild(root),
+                function_tree_dist_height_child, "全体 ノード親子縦距離");
+        node_menu.style("display", "none");
+    });
+    function function_tree_dist_height_child(node, newValue) {
+        if (newValue !== "") {
+            node_height = Number(newValue);
+            setTreeDistHeightChild(root, node_height);
+        } else {
+            removeTreeDistHeightChild(root);
+        }
+        calcPosition(root);
+        resize();
+        update(root, data_relation);
+    }
+
+    // メニューの全体設定のノード兄弟縦距離の処理
+    d3.select("#menu-tree-dist_height_brother").on("click", function() {
+        if (!contextTargetNode) return;
+        genericEditor(contextTargetNode, getTreeDistHeightBrother(root),
+                function_tree_dist_height_brother, "全体 ノード兄弟縦距離");
+        node_menu.style("display", "none");
+    });
+    function function_tree_dist_height_brother(node, newValue) {
+        if (newValue !== "") {
+            node_height = Number(newValue);
+            setTreeDistHeightBrother(root, node_height);
+        } else {
+            removeTreeDistHeightBrother(root);
+        }
+        calcPosition(root);
+        resize();
+        update(root, data_relation);
+    }
+
+    // メニューの全体設定のノード従兄弟縦距離の処理
+    d3.select("#menu-tree-dist_height_parent").on("click", function() {
+        if (!contextTargetNode) return;
+        genericEditor(contextTargetNode, getTreeDistHeightParent(root),
+                function_tree_dist_height_parent, "全体 ノード従兄弟縦距離");
+        node_menu.style("display", "none");
+    });
+    function function_tree_dist_height_parent(node, newValue) {
+        if (newValue !== "") {
+            node_height = Number(newValue);
+            setTreeDistHeightParent(root, node_height);
+        } else {
+            removeTreeDistHeightParent(root);
+        }
+        calcPosition(root);
+        resize();
+        update(root, data_relation);
+    }
     // メニューのデフォルト設定のフォントの種類の処理
     d3.select("#menu-default-font").on("click", function() {
         if (!contextTargetNode) return;
-        genericEditor(contextTargetNode, getNodeFormat(contextTargetNode), function_default_font);
+        genericEditor(contextTargetNode, getNodeFontFamilyDefault(root),
+                function_default_font, "フォントの種類（デフォルト）");
         // openDefaultFontEditor(contextTargetNode);
         node_menu.style("display", "none");
     });
@@ -1834,7 +2174,8 @@ function update_menu_set(node_rect) {
     d3.select("#menu-default-fontsize").on("click", function() {
         if (!contextTargetNode) return;
         // openDefaultFontSizeEditor(contextTargetNode);
-        genericEditor(contextTargetNode, getNodeFormat(contextTargetNode), function_default_fontsize);
+        genericEditor(contextTargetNode, getNodeFontSizeDefault(root),
+                function_default_fontsize, "フォントサイズ（デフォルト）");
         node_menu.style("display", "none");
     });
     function function_default_fontsize(node, newValue) {
@@ -1846,10 +2187,11 @@ function update_menu_set(node_rect) {
         update(root, data_relation);
     }
 
-
-    document.getElementById("menu-node-color-picker").addEventListener("change", function(e) {
+    const colorPickerDefault = document.getElementById("menu-default-color-picker");
+    colorPickerDefault.addEventListener("change", function(e) {
         e.stopPropagation();
         e.preventDefault();
+        console.log("color-picker default", contextTargetNode);
 
         if (!contextTargetNode) return;
 
@@ -1857,81 +2199,40 @@ function update_menu_set(node_rect) {
         // TODO 色変更の操作後、別のメニューの操作ダイアログがでない
         
         console.log(this.value);
-        setNodeColor(contextTargetNode, this.value);
-        update(root, data_relation);
-        hideContextMenu();
-    });
-
-    document.getElementById("menu-default-color-picker").addEventListener("change", function(e) {
-        e.stopPropagation();
         setNodeColorDefault(root, this.value);
         update(root, data_relation);
         hideContextMenu();
     });
-
-    // メニューの全体設定の縦の処理
-    d3.select("#menu-tree-height").on("click", function() {
+    // console.log(colorPickerDefault);
+    d3.select("#menu-default-color-item").on("click", function() {
+        d3.event.stopPropagation();
         if (!contextTargetNode) return;
-        genericEditor(contextTargetNode, svg.attr("height"), function_tree_heihgt);
-        node_menu.style("display", "none");
-    });
-    function function_tree_heihgt(node, newValue) {
-        if (newValue !== "") {
-            svg_height_min = newValue;
-            resize();
+        colorPickerDefault.value = getNodeColorDefault(root) || "#ffffff";
+        // console.log(colorPickerDefault.value);
+        // console.log(colorPickerDefault.disabled);
+        try {
+            colorPickerDefault.showPicker();
+        } catch (e) {
+            colorPickerDefault.click();
         }
-        update(root, data_relation);
-    }
+    });
 
-    // メニューの全体設定の横の処理
-    d3.select("#menu-tree-width").on("click", function() {
+    // メニューのデフォルト設定のフォーマットの処理
+    d3.select("#menu-default-format").on("click", function() {
         if (!contextTargetNode) return;
-        genericEditor(contextTargetNode, svg.attr("width"), function_tree_width);
+        genericEditor(contextTargetNode, getNodeFormatDefault(root),
+                function_default_format, "フォーマット（デフォルト）");
+        // openDefaultFontEditor(contextTargetNode);
         node_menu.style("display", "none");
     });
-    function function_tree_width(node, newValue) {
-        if (newValue !== "") {
-            svg_width_min = newValue;
-            resize();
-        }
-        update(root, data_relation);
-    }
-
-    // メニューの全体設定のノード横距離の処理
-    d3.select("#menu-tree-dist_width").on("click", function() {
-        if (!contextTargetNode) return;
-        genericEditor(contextTargetNode, getTreeDistWidth(root),
-                function_tree_dist_width, "ノード横距離");
-        node_menu.style("display", "none");
-    });
-    function function_tree_dist_width(node, newValue) {
-        if (newValue !== "") {
-            newNumber = Number(newValue);
-            setTreeDistWidth(root, newValue);
+    function function_default_font(node, newValue) {
+        if (newValue === "") {
+            removeNodeFormatDefault(root);
         } else {
-            removeTreeDistWidth(root);
-        }
-        calcPosition(root);
-        resize();
-        update(root, data_relation);
-    }
-
-        // メニューの全体設定のノード横間隔の処理
-    d3.select("#menu-tree-gap_y").on("click", function() {
-        if (!contextTargetNode) return;
-        genericEditor(contextTargetNode, node_height, function_tree_gap_y);
-        node_menu.style("display", "none");
-    });
-    function function_tree_gap_y(node, newValue) {
-        if (newValue !== "") {
-            node_height = Number(newValue);
-            // treeLayout = d3.tree()
-            //     .nodeSize([node_height , node_width]);   2026/09/21 自分で位置を計算するので不要になった
-            resize();
+            setNodeFormatDefault(root, newValue);
         }
         update(root, data_relation);
     }
-
 
 }
 
@@ -1991,11 +2292,15 @@ function openNewChildEditor(parentNode) {
     activeExprInput = null;
     editingNodeId = null;
 
-    const w = 200;
-    const h = 90;
+    const w = 250;
+    const h = 120;
 
-    const px = nodePosX(parentNode) + 80;
-    const py = nodePosY(parentNode) - h;
+    const svgEl = d3.select("svg").node();
+    const svgRect = svgEl.getBoundingClientRect();
+    let px = nodePosX(parentNode) + 80;
+    let py = nodePosY(parentNode) - h / 2;
+    px = Math.max(0, Math.min(px, svgRect.width - w));
+    py = Math.max(0, Math.min(py, svgRect.height - h));
 
     const editor = g.append("foreignObject")
         .attr("class", "node-editor")
@@ -2012,17 +2317,22 @@ function openNewChildEditor(parentNode) {
         .style("padding", "6px")
         .style("box-sizing", "border-box")
         .style("font", "12px sans-serif");
+    
+    header = box.append("xhtml:div")
+        .style("margin-bottom", "6px")
+        .style("font-weight", "bold")
+        .text("子ノードのノード名・内容を入力");
     box.append("xhtml:input")
         .attr("class", "new-name")
         .attr("type", "text")
-        .attr("placeholder", "node name")
-        .style("width", "100%")
+        .attr("placeholder", "ノード名")
+        .style("width", "95%")
         .style("box-sizing", "border-box");
     box.append("xhtml:input")
         .attr("class", "new-expr")
         .attr("type", "text")
-        .attr("placeholder", "expr")
-        .style("width", "100%")
+        .attr("placeholder", "数値、文字列、式")
+        .style("width", "95%")
         .style("margin-top", "4px")
         .style("box-sizing", "border-box")
         .each(function() {
@@ -2064,6 +2374,18 @@ function openNewChildEditor(parentNode) {
         .on("click", function() {
             g.selectAll(".node-editor").remove();
         });
+
+    header.call(
+        d3.drag()
+            .container(function() {
+                return g.node();
+            })
+            .on("drag", function(event) {
+                editor
+                    .attr("x", d3.event.x)
+                    .attr("y", d3.event.y);
+            })
+    );
 
     setTimeout(function() {
         const input = editor.node().querySelector(".new-name");
@@ -2117,12 +2439,25 @@ function addChildNode(parentNode, name, expr) {
 
     const parentID = parentNode.id;
     // console.log(parentID);
+    console.log(parentNode);
 
-    root = d3.hierarchy(doc.documentElement, xmlNode => {
+    //root = d3.hierarchy(doc.documentElement, xmlNode => {
+    //    return Array.from(xmlNode.children).filter(child => child.tagName === "node");
+    //});
+
+    const newNode = d3.hierarchy(newNodeElement, xmlNode => {
         return Array.from(xmlNode.children).filter(child => child.tagName === "node");
     });
-        // root.descendants()
-        // .forEach(d => {d.id = d.data.id;})
+
+    newNode.parent = parentNode;
+    newNode.depth = parentNode.depth + 1;
+    newNode.height = 0;
+    newNode.id = getNodeID(newNode);
+
+    if (!parentNode.children) {
+        parentNode.children = [];
+    }
+    parentNode.children.push(newNode);    
 
     root.descendants().forEach(d => {
         // console.log(getNodeName(d));
@@ -2134,15 +2469,17 @@ function addChildNode(parentNode, name, expr) {
         // }
     });
 
-    const newParentNode = root.descendants().find(node => node.id === parentID);
+    // const newParentNode = root.descendants().find(node => node.id === parentID);
     // console.log(newParentNode);
-    const newNode = newParentNode.children.find(node => node.data === newNodeElement);
+    // const newNode = newParentNode.children.find(node => node.data === newNodeElement);
 
     // console.log("before setNode");
     setNode(root);
     // console.log(root);
     // console.log("before new_Node");
     new_Node(newNode, name, set_expr);
+
+    console.log(newNode.parent);
     // setNode(root);
  
     // print_root(root);
@@ -2163,13 +2500,20 @@ function openNewRootChildEditor(posX, posY) {
     activeExprInput = null;
     editingNodeId = null;
 
-    const w = 220;
-    const h = 90;
+    const w = 250;
+    const h = 120;
+
+    const svgEl = d3.select("svg").node();
+    const svgRect = svgEl.getBoundingClientRect();
+    let px = posX;
+    let py = posY - h/2;
+    px = Math.max(0, Math.min(px, svgRect.width - w));
+    py = Math.max(0, Math.min(py, svgRect.height - h));
 
     const editor = g.append("foreignObject")
         .attr("class", "node-editor")
-        .attr("x", posX)
-        .attr("y", posY - h / 2)
+        .attr("x", px)
+        .attr("y", py)
         .attr("width", w)
         .attr("height", h);
 
@@ -2183,18 +2527,21 @@ function openNewRootChildEditor(posX, posY) {
         .style("box-sizing", "border-box")
         .style("font", "12px sans-serif");
 
+    header = box.append("xhtml:div")
+        .style("margin-bottom", "6px")
+        .style("font-weight", "bold")
+        .text("ルートの子ノードのノード名・内容を入力");
     box.append("xhtml:input")
         .attr("class", "new-name")
         .attr("type", "text")
-        .attr("placeholder", "node name")
-        .style("width", "100%")
+        .attr("placeholder", "ノード名")
+        .style("width", "95%")
         .style("box-sizing", "border-box");
-
     box.append("xhtml:input")
         .attr("class", "new-expr")
         .attr("type", "text")
-        .attr("placeholder", "expr")
-        .style("width", "100%")
+        .attr("placeholder", "数値、文字列、式")
+        .style("width", "95%")
         .style("margin-top", "4px")
         .style("box-sizing", "border-box")
         .each(function() {
@@ -2247,6 +2594,17 @@ function openNewRootChildEditor(posX, posY) {
         .on("click", function() {
             g.selectAll(".node-editor").remove();
         });
+    header.call(
+        d3.drag()
+            .container(function() {
+                return g.node();
+            })
+            .on("drag", function(event) {
+                editor
+                    .attr("x", d3.event.x)
+                    .attr("y", d3.event.y);
+            })
+    );
 
     setTimeout(function() {
         const input = editor.node().querySelector(".new-name");
@@ -2297,15 +2655,29 @@ function addChildToRootAtPosition(name, expr, posX, posY) {
 
     const rootID = rootElement.id;
 
-    root = d3.hierarchy(doc.documentElement, xmlNode => {
+    // root = d3.hierarchy(doc.documentElement, xmlNode => {
+    //     return Array.from(xmlNode.children).filter(child => child.tagName === "node");
+    // });
+
+    const newNode = d3.hierarchy(newNodeElement, xmlNode => {
         return Array.from(xmlNode.children).filter(child => child.tagName === "node");
     });
+
+    newNode.parent = root;
+    newNode.depth = root.depth + 1;
+    newNode.height = 0;
+    newNode.id = getNodeID(newNode);
+
+    if (!root.children) {
+        root.children = [];
+    }
+    root.children.push(newNode);    
 
     root.descendants().forEach(d => {
         d.id = getNodeID(d); //d.data.querySelector(':scope > id');
     });
 
-    const newNode = root.children.find(node => node.data === newNodeElement);
+    // const newNode = root.children.find(node => node.data === newNodeElement);
     console.log(newNode, posX);
     setNodeCustomX(newNode, posX);
     setNodeCustomY(newNode, posY);
@@ -2325,25 +2697,28 @@ function change_node(node) {
 
 //ノード名とノードの内容を入力して、変更します
 function openNodeEditor(d) {
-    console.log("openNodeEditor start");
+    // console.log("openNodeEditor start");
     g.selectAll(".node-editor").remove();
     activeExprInput = null;
     editingNodeId = d.id;
 
-    const w = Math.max((getNodeRectW(d)===undefined)?0:getNodeRectW(d), 220);
-    // console.log(getNodeRectH(d));
-    const h = Math.max((getNodeRectH(d)===undefined)?0:getNodeRectH(d), 90);
-    const x = nodePosX(d);
-    // console.log(nodePosY(d));
+    const w = Math.max(d.w * 1.1, 250);
+    // console.log(d.w, w);
+    const h = Math.max(d.h * 1.1, 120);
     // console.log(h);
-    // console.log(nodePosY(d)-h/2);
-    const y = nodePosY(d) - h / 2;
-    // console.log("y", y);
+
+    const svgEl = d3.select("svg").node();
+    const svgRect = svgEl.getBoundingClientRect();
+    let px = nodePosX(d);
+    let py = nodePosY(d) - h / 2;
+    px = Math.max(0, Math.min(px, svgRect.width - w));
+    py = Math.max(0, Math.min(py, svgRect.height - h));
+
 
     const editor = g.append("foreignObject")
         .attr("class", "node-editor")
-        .attr("x", x)
-        .attr("y", y)
+        .attr("x", px)
+        .attr("y", py)
         .attr("width", w)
         .attr("height", h);
 
@@ -2355,14 +2730,19 @@ function openNodeEditor(d) {
         .style("padding", "4px")
         .style("box-sizing", "border-box");
 
+    const header = box.append("xhtml:div")
+        .style("margin-bottom", "6px")
+        .style("font-weight", "bold")
+        .text("ノード名・内容を編集");
+
     box.append("xhtml:input")
         .attr("class", "edit-name")
-        .style("width", "100%")
+        .style("width", "95%")
         .property("value", getNodeName(d));
 
     box.append("xhtml:input")
         .attr("class", "edit-expr")
-        .style("width", "100%")
+        .style("width", "95%")
         .style("margin-top", "4px")
         .property("value", getNodeExpr(d))
         .each(function() {
@@ -2386,17 +2766,13 @@ function openNodeEditor(d) {
                     }
                 }
             }
-            console.log(new_name, set_expr);
-
-            // TODO rename only
-
-
+            // console.log(new_name, set_expr);
             const rv = rename_reexpr_Node(d, new_name, set_expr ) 
             if (! rv) {
                 console.log("rv", rv);
                 return;
             }
-            console.log(d);
+            // console.log(d);
             // calcAll(root);
             setNode(root);
             calcPosition(root);
@@ -2414,27 +2790,68 @@ function openNodeEditor(d) {
         .on("click", function() {
             g.selectAll(".node-editor").remove();
         });
-
+    header.call(
+        d3.drag()
+            .container(function() {
+                return g.node();
+            })
+            .on("drag", function(event) {
+                editor
+                    .attr("x", d3.event.x)
+                    .attr("y", d3.event.y);
+            })
+    );
+    setTimeout(function() {
+        const input = editor.node().querySelector(".edit-name");
+        if (input) input.focus();
+    }, 0);
 }
+
+// function resize() {
+//     const nodes = root.descendants();
+//     // const xExtent = d3.extent(nodes, d => {const customX = getNodeCustomX(d); return customX?customX + d.w :d.x + d.w});
+//     // const yExtent = d3.extent(nodes, d => {const customY = getNodeCustomY(d); return customY?customY + d.h :d.y + d.h});
+//     const yExtent = d3.extent(nodes, d => {const customX = getNodeCustomX(d); return customX?customX + d.w :d.x + d.w});
+//     const xExtent = d3.extent(nodes, d => {const customY = getNodeCustomY(d); return customY?customY + d.h :d.y + d.h});
+//     console.log(xExtent, yExtent);
+//     // 3. 余白（マージン）の設定
+//     const margin = { top: 40, right: 40, bottom: 40, left: 40 };
+
+//     const svgWidth = Math.max((yExtent[1]) + margin.left + margin.right + node_width*2, svg_width_min);
+//     const svgHeight = Math.max((xExtent[1]) + margin.top + margin.bottom + node_height*5, svg_height_min);
+//     console.log(svgWidth, svgHeight);
+
+//     // 5. SVG要素にサイズを適用
+//     d3.select("svg")
+//         .attr("width", svgWidth)
+//         .attr("height", svgHeight);
+// }
 
 function resize() {
     const nodes = root.descendants();
-    const xExtent = d3.extent(nodes, d => {const customX = getNodeCustomX(d); return customX?customX:d.x}); // [最左のx, 最右のx]
-    const yExtent = d3.extent(nodes, d => {const customY = getNodeCustomY(d); return customY?customY:d.y}); // [最上のy, 最下のy]（最上は通常0）
-    // console.log(xExtent, yExtent);
-    // 3. 余白（マージン）の設定
+
+    // 縦方向の下端
+    const maxBottom = d3.max(nodes, d => (getNodeCustomX(d) ?? d.x) + d.h);
+
+    // 横方向の右端
+    const maxRight = d3.max(nodes, d => (getNodeCustomY(d) ?? d.y) + d.w);
+
     const margin = { top: 40, right: 40, bottom: 40, left: 40 };
 
-    const svgWidth = Math.max((yExtent[1]) + margin.left + margin.right + node_width*2, svg_width_min);
-    const svgHeight = Math.max((xExtent[1]) + margin.top + margin.bottom + node_height*5, svg_height_min);
-    // console.log(svgWidth, svgHeight);
+    const svgWidth = Math.max(
+        maxRight + margin.left + margin.right + node_width * 2,
+        svg_width_min
+    );
 
-    // 5. SVG要素にサイズを適用
+    const svgHeight = Math.max(
+        maxBottom + margin.top + margin.bottom + node_height * 5,
+        svg_height_min
+    );
+
     d3.select("svg")
         .attr("width", svgWidth)
         .attr("height", svgHeight);
 }
-
 
 function create_relation() {
     data_relation_set.clear();
@@ -2456,6 +2873,9 @@ function create_relation() {
 
 async function saveDataToXML( data, loadFileName ) {
   try {
+    console.log("save前 root", root);
+    console.log("save前 data", data);
+
     // 1. 「名前を付けて保存」ダイアログを表示
     const handle = await window.showSaveFilePicker({
       suggestedName: loadFileName?loadFileName:'leafX_.xml',
@@ -2472,6 +2892,10 @@ async function saveDataToXML( data, loadFileName ) {
     }
     await writable.write(xmlString);
     await writable.close();
+
+    console.log("save後 root", root);
+    console.log("save後 data", data);
+
   } catch (err) {
     // ユーザーがキャンセルした場合はここにきます
     console.log('保存がキャンセルされました:', err);

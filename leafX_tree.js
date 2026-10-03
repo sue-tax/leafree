@@ -379,6 +379,12 @@ function calcAll(root) {
             d.link_ref_set = new Set();
             d.link_path_set = new Set();    // ノードパス指定の途中のノード
             d.link_path_rev_set = new Set();    // ノードパス指定の途中のノード
+            // d.link_child_src_parent_set = new Set();    // H = '//A/*'の場合 HからAを指す
+            // d.link_child_ref_parent_set = new Set();    // H = '//A/*'の場合 AからHを指す
+            // d.link_child_parent_set = new Set();        // '//A/*'の場合 *のnodeからAを指す
+            // d.link_child_parent_rev_set = new Set();    // '//A/*'の場合 Aから*のnodeを指す
+            d.asterisk_child = false;
+            d.asterisk_descendant = false;
             setNodeRepExpr(d, "");
             setNodeValue(d, "");
             setNodeDisp(d, "");
@@ -407,6 +413,7 @@ function calcEachNode(node) {
     // console.log(node);
     node.link_src_set.clear();
     node.link_path_set.clear();
+    // node.link_child_parent_set.clear();
 
     const rootNode = node.ancestors ? node.ancestors().pop() : node;
     const expr = getNodeExpr(node);
@@ -417,32 +424,38 @@ function calcEachNode(node) {
     // }
     let rv;
     if (expr === "" || ! expr.startsWith("=")) {
+        // 式でない数値、文字列の処理
         // console.log("そのまま");
         //TODO "～" '～
         let value;
         if (expr.startsWith("'")) {
+            // expr = 'abc
             value = expr;
-            setNodeRepExpr(node, value);
-            setNodeValue(node, value);
-            setNodeDisp(node, value.slice(1));
+            setNodeRepExpr(node, value);    // 'abc
+            setNodeValue(node, value);      // 'abc
+            setNodeDisp(node, value.slice(1));  // abc
         } else if (expr.startsWith("\"") && expr.endsWith("\"")) {
+            // expr = "abc"
             value = "'" + expr.slice(1, expr.length-1);
-            setNodeRepExpr(node, value);
-            setNodeValue(node, value);
-            setNodeDisp(node, value.slice(1));
+            setNodeRepExpr(node, value);    // 'abc
+            setNodeValue(node, value);      // 'abc
+            setNodeDisp(node, value.slice(1));    // abc
         } else {
             if (! Number.isFinite(Number(expr))) {
-                value = "'" + expr;
-                setNodeDisp(node, value.slice(1));
+                // expr = abc
+                value = "'" + expr;         // 'abc
+                setNodeDisp(node, value.slice(1));  // abc
         } else {
+                // 123
                 value = expr;
                 setNodeDisp(node, value);
             }
             setNodeRepExpr(node, value);
             setNodeValue(node, value);
         }
-        rv = value;
+        rv = value;     // 文字列なら、'abc　数値なら、数値を示す文字列
     } else {
+        // = で始まる式の処理
         // console.log("式");
         // setNodeValue(node, "#LOOP");
         let dst = "";
@@ -453,13 +466,18 @@ function calcEachNode(node) {
             if (expr.slice(index).startsWith("'*'")) {
                 // console.log("startsWith", expr, expr.slice(index));
                 index += 3;
+                // node.link_child_ref_parent.add(node);   // '*'の場合は、自分自身を登録
+                // node.link_child_src_parent.add(node);   // '*'の場合は、自分自身を登録
+                node.asterisk_child = true;
+                // console.log(node);
+                setNodeValue(node, "#LOOP");
 
                 const children = node.descendants()
                         .filter(d => {return d.depth === node.depth+1;});
                 let value_list = [];
                 children.forEach(child_node => {
                     const child_name = child_node.data.name;
-                    const value = getNodeValue(child_node);
+                    let value = getNodeValue(child_node);
                     if (typeof value === "string" && value.startsWith("#")) {
                         const err_value = "#ERROR?" + expr.substring(0, index) + value
                                 + expr.substring(index);
@@ -478,8 +496,18 @@ function calcEachNode(node) {
                         // console.log("get_multi_value return err", err_value);
                         return err_value;
                     }
+                    if (typeof value === "string") {
+                        if (value.startsWith("'")) {
+                            value = "string(\"" + value.slice(1) + "\")";
+                        } else if (value.startsWith("\"") && value.endsWith("\"")) {
+                            value = "'" + value.slice(1, value.length-1);
+                        } else {
+                        }
+                    }
                     node.link_src_set.add(child_node);
                     child_node.link_ref_set.add(node);
+                    // node.link_child_parent_rev_set.add(child_node);
+                    // child_node.link_child_parent_set.add(node);
                     // console.log(value);
                     value_list.push(value);
                     // console.log(value_list);
@@ -489,13 +517,14 @@ function calcEachNode(node) {
             } else if (expr.slice(index).startsWith("'**'")) {
                 // console.log("startsWith", expr);
                 index += 4;
+                node.asterisk_descendant = true;
                 setNodeValue(node, "#LOOP");
 
                 const children = node.descendants();
                 let value_list = [];
                 children.forEach(child_node => {
                     const child_name = child_node.data.name;
-                    const value = getNodeValue(child_node);
+                    let value = getNodeValue(child_node);
                     if (typeof value === "string" && value.startsWith("#")) {
                         const err_value = "#ERROR?" + expr.substring(0, index) + value
                                 + expr.substring(index);
@@ -513,20 +542,24 @@ function calcEachNode(node) {
                         // console.log("get_multi_value return err", err_value);
                         return err_value;
                     }
-                    if (value.startsWith("'")) {
-                        // value = value;
-                    } else if (value.startsWith("\"") && value.endsWith("\"")) {
-                        value = "'" + value.slice(1, value.length-1);
-                    } else {
-                        // value = value;
+                    if (typeof value === "string") {
+                        if (value.startsWith("'")) {
+                            value = "string(\"" + value.slice(1) + "\")";
+                        } else if (value.startsWith("\"") && value.endsWith("\"")) {
+                            value = "'" + value.slice(1, value.length-1);
+                        } else {
+                        }
                     }
                     node.link_src_set.add(child_node);
                     child_node.link_ref_set.add(node);
+                    // node.link_child_parent_rev_set.add(child_node);
+                    // child_node.link_child_parent_set.add(node);
                     value_list.push(value);
                 });
                 console.log(value_list);
                 dst += "[" + value_list.join(",") + "]";
             } else if (expr[index] === "'") {
+                // ノード指定
                 index += 1;
                 let node_name = "";
                 while (expr[index] !== "'") {
@@ -545,10 +578,10 @@ function calcEachNode(node) {
                     // console.log("get_multi_value return err", err_value);
                     return err_value;
                 }
-                if (value.startsWith("'")) {
+                if (typeof(value) === "string" && value.startsWith("'")) {
                     // value = value;
                     dst += "string(\"" + value.slice(1) + "\")";
-                } else if (value.startsWith("\"") && value.endsWith("\"")) {
+                } else if (typeof(value) === "string" && value.startsWith("\"") && value.endsWith("\"")) {
                     dst += "string(" + value + ")";
                     value = "'" + value.slice(1, value.length-1);
                 } else {
@@ -571,6 +604,7 @@ function calcEachNode(node) {
             // result = dst;
             result = "'" + dst.slice(1, dst.length-1);            
         } else {
+            // console.log(dst);
             result = math.evaluate(dst);
         }
 
@@ -594,13 +628,16 @@ function calcEachNode(node) {
 
 function create_disp(node) {
     const format = getNodeFormat(node);
-    const value = getNodeValue(node);
+    let value = getNodeValue(node);
+    if (value.startsWith("'")) {
+        value = value.slice(1);
+    }
     // console.log("value", value);
     // console.log("format", format);
 
     if (format) {
         let disp = d3.format(format)(value);
-        console.log(disp)
+        // console.log(disp)
         setNodeDisp(node, disp);
     } else {
         // console.log("calcEachNode", node.data.name, node.data.value);
@@ -618,6 +655,9 @@ function create_disp(node) {
     }
 }
 
+// 式内のノード指定の処理
+// ノードパス指定は、get_multi_value_xpathで処理
+// ノード名直接指定がメインの処理
 function get_multi_value(node, indicator) {
     // console.log("get_multi_value start");
     // console.log(node);
@@ -629,10 +669,10 @@ function get_multi_value(node, indicator) {
     if (indicator.startsWith('/')) {
         const root_node = node.ancestors ? node.ancestors().pop() : node;
         const value = get_multi_value_xpath(node, root_node, indicator);
-// console.log("root_node", root_node);
-// console.log("root_node.data", root_node.data);
-// console.log("is xml element", root_node.data instanceof Element);
-// console.log("tagName", root_node.data && root_node.data.tagName);
+        // console.log("root_node", root_node);
+        // console.log("root_node.data", root_node.data);
+        // console.log("is xml element", root_node.data instanceof Element);
+        // console.log("tagName", root_node.data && root_node.data.tagName);
         return value;
     } else if (indicator.startsWith(".")) {
         if (indicator[1] !== "/") {
@@ -652,14 +692,14 @@ function get_multi_value(node, indicator) {
             if (target_node.length === 1) {
                 let value = getNodeValue(target_node[0]);
                 // console.log("value", value);
-                if (value.startsWith("'")) {
+                if (typeof(value) === "string" && value.startsWith("'")) {
                     // result = "\"" + dst.slice(1) + "\"";
                     // value = value;
-                } else if (value.startsWith("\"") && value.endsWith("\"")) {
+                    value = "string(\"" + value + "\")";
+                } else if (typeof(value) === "string" && value.startsWith("\"") && value.endsWith("\"")) {
                     // result = dst;
-                    value = "'" + value.slice(1, value.length-1);            
-                // if (value.startsWith("'")) {
-                //     value = "\"" + value.slice(1) + "\"";
+                    // value = "'" + value.slice(1, value.length-1);            
+                    value = "string(\"" + value.slice(1, value.length-1) + "\")";
                 }
                 node.link_src_set.add(target_node[0]);
                 target_node[0].link_ref_set.add(node);
@@ -671,10 +711,10 @@ function get_multi_value(node, indicator) {
                     // console.log(each_node);
                     const value = getNodeValue(each_node);
                     // console.log("value", value);
-                    if (value.startsWith("'")) {
+                    if (typeof(value) === "string" && value.startsWith("'")) {
                         // result = "\"" + dst.slice(1) + "\"";
                         // value = value;
-                    } else if (value.startsWith("\"") && value.endsWith("\"")) {
+                    } else if (typeof(value) === "string" && value.startsWith("\"") && value.endsWith("\"")) {
                         // result = dst;
                         value = "'" + value.slice(1, value.length-1);            
                     }
@@ -688,14 +728,16 @@ function get_multi_value(node, indicator) {
                 return "[" + value_list.join(",") + "]";
             }
         } else {
-            const value = getNodeValue(target_node);
+            let value = getNodeValue(target_node);
             // console.log("value", value);
-            if (value.startsWith("'")) {
+            if (typeof(value) === "string" && value.startsWith("'")) {
                 // result = "\"" + dst.slice(1) + "\"";
                 // value = value;
-            } else if (value.startsWith("\"") && value.endsWith("\"")) {
+                value = "string(\"" + value + "\")";
+            } else if (typeof(value) === "string" && value.startsWith("\"") && value.endsWith("\"")) {
                 // result = dst;
-                value = "'" + value.slice(1, value.length-1);            
+                // value = "'" + value.slice(1, value.length-1);            
+                value = "string(\"" + value.slice(1, value.length-1) + "\")";
             }
             // if (value.startsWith("'")) {
             //     value = "\"" + value.slice(1) + "\"";
@@ -707,15 +749,13 @@ function get_multi_value(node, indicator) {
     }
 }
 
-function get_multi_value_xpath(node, base_node, indicator) {
 
-    // TODO
-    // '//A/B//C//d'の場合に、
-    // A,B,CまでのxPathを別に作り、
-    //　それぞれのノードを　
+
+function get_multi_value_xpath(node, base_node, indicator) {
     let link_path_list = [];    // link_path_setを作成用のxPath
     let index = 0;
     let str_xpath = '.';
+    let flag_child_asterisk = false;
     const length = indicator.length;
     do {
         str_xpath += indicator[index];
@@ -737,7 +777,9 @@ function get_multi_value_xpath(node, base_node, indicator) {
         if (indicator[index] === '*') {
             index++;
             if (index === length) {
+                    // 最後が '*'
                     str_xpath += "node";
+                    base_node.asterisk_child = true;
                     break;
             }
             if (indicator[index] === '*') {
@@ -746,7 +788,9 @@ function get_multi_value_xpath(node, base_node, indicator) {
                     error_get_multivalue = "#INVALID_NODE_PATH";
                     return null;
                 }
+                // 最後が '**'
                 str_xpath += "descendant::node";
+                base_node.asterisk_descendant = true;
                 break;
             }
             error_get_multivalue = "#INVALID_NODE_PATH";
@@ -776,8 +820,9 @@ function get_multi_value_xpath(node, base_node, indicator) {
         error_get_multivalue = "#INVALID_NODE_PATH"
         return null;
     }
-    // console.log(str_xpath);
+    console.log(str_xpath);
     const xml_doc = base_node.data.ownerDocument;
+    console.log(base_node);
     const xpathResult = xml_doc.evaluate(
         str_xpath, 
         base_node.data, 
@@ -794,6 +839,7 @@ function get_multi_value_xpath(node, base_node, indicator) {
     setNodeValue(node, "#LOOP?");
     const nodeArray = Array.from(snapshotIterator(xpathResult));
     const root_node = node.ancestors ? node.ancestors().pop() : node;
+    // let child_asterisk_list = []
     for (const each_element of nodeArray) {
         const id = getElementID(each_element);
         const each_node = root_node.descendants().find(d => d.id === id);
@@ -801,8 +847,9 @@ function get_multi_value_xpath(node, base_node, indicator) {
         if (each_node === undefined) {
             alert("idが見つからない")
         }
+        // child_asterisk_list.add(each_node);
 
-        const value = getNodeValue(each_node);
+        let value = getNodeValue(each_node);
         if (typeof value === "string" && value.startsWith("#")) {
             error_get_multivalue = value;
             return null;
@@ -811,7 +858,7 @@ function get_multi_value_xpath(node, base_node, indicator) {
             error_get_multivalue = "#EMPTY?";
             return null;
         }
-        if (value.startsWith("'")) {
+        if (typeof value === "string" && value.startsWith("'")) {
             value = "\"" + value.slice(1) + "\"";
         }
         node.link_src_set.add(each_node);
@@ -835,6 +882,12 @@ function get_multi_value_xpath(node, base_node, indicator) {
             const link_node = root_node.descendants().find(d => d.id ===link_id);
             node.link_path_set.add(link_node);
             link_node.link_path_rev_set.add(node);
+            // if (flag_child_asterisk) {
+            //     for (const child_aterisk_node in child_asterisk_list) {
+            //         child_aterisk_node.link_child_parent_set.add(link_node);
+            //         link_node.link_child_parent_rev_set.add(child_asterisk_node);
+            //     }
+            // }
         }
     })
     // console.log("value_list", value_list, value_list.length);
@@ -878,112 +931,111 @@ function get_multi_value_xpath(node, base_node, indicator) {
 //     return value_list;
 // }
 
-
-function get_multi_value_list(_node_list, indicator, _index, length) {
-    console.log("get_multi_value_list")
-    console.log(_node_list);
-    console.log(indicator);
-    let node_list = _node_list;
-    let index = _index;
-   do {
-        if (indicator[index] !== "/") {
-            error_get_multi_value = "#INVALID?";
-            return null;
-        }
-        if (index + 1 === length) {
-            error_get_multi_value = "#INVALID?";
-            return null;
-        }
-        let new_node_list = [];
-        if (indicator[index + 1] == "/") {
-            // "//"の場合
-            console.log("//");
-            index += 2;
-            if (indicator[index + 1] === "*") {
-                break;
-            }
-            let name = '';
-            do {
-                if ((indicator[index]=='"') || (indicator[index]=="'")
-                        || (indicator[index]=="*") || (indicator[index]==".")) {
-                    error_get_multi_value = "#INVALID?";
-                    return null;
-                }
-                name += indicator[index];
-                index += 1;
-            } while((index !== length) && (indicator[index] !== "/"));
-            console.log(name);
-            node_list.forEach((node) => {
-                children = node.descendants().filter((d) => {return d.data.name === name;});
-                new_node_list = new_node_list.concat(children);
-            })
-        } else {
-            // "/"の場合
-            console.log("/");
-            index += 1;
-            if (indicator[index + 1] === "*") {
-                break;
-            }
-            let name = '';
-            do {
-                if ((indicator[index]=='"') || (indicator[index]=="'")
-                        || (indicator[index]=="*") || (indicator[index]==".")) {
-                    error_get_multi_value = "#INVALID?";
-                    return null;
-                }
-                name += indicator[index];
-                index += 1;
-            } while((index !== length) && (indicator[index] !== "/"));
-            // console.log(name);
-            node_list.forEach((node) => {
-                const depth = node.depth;
-                children = node.descendants()
-                        .filter((d) => {return (d.depth == depth+1) && (d.data.name === name);});
-                new_node_list = new_node_list.concat(children);
-            })
-        }
-        node_list = new_node_list;
-    } while((index !== length) || (indicator[index] === '/'));
-    if (index === length) {
-        return node_list;
-    }
-    if (indicator[index] !== '*') {
-        error_get_multi_value = "#INVALID?";
-        return null;
-    }
-    if (index + 1 === length) {
-        // "*"
-        let list = [];
-            const depth = node.depth;
-        node_list.forEach((node) => {
-            children = node.descendants()
-                   .filter((d) => {return d.depth == depth+1;});
-            list = list.concat(children);
-        })
-        return list;
-    } else {
-        if (index + 2 !== length) {
-            error_get_multi_value = "#INVALID?";
-            return null;
-        }
-        if (indicator[index+1] !== "*") {
-            error_get_multi_value = "#INVALID?";
-            return null;
-        }
-        // "**"
-        let list = [];
-        node_list.forEach((node) => {
-            children = node.descendants();
-            list = list.concat(children);
-        })
-        return list;
-    }
-}
+//今は、使ってないようだ
+// function get_multi_value_list(_node_list, indicator, _index, length) {
+//     console.log("get_multi_value_list")
+//     console.log(_node_list);
+//     console.log(indicator);
+//     let node_list = _node_list;
+//     let index = _index;
+//    do {
+//         if (indicator[index] !== "/") {
+//             error_get_multi_value = "#INVALID?";
+//             return null;
+//         }
+//         if (index + 1 === length) {
+//             error_get_multi_value = "#INVALID?";
+//             return null;
+//         }
+//         let new_node_list = [];
+//         if (indicator[index + 1] == "/") {
+//             // "//"の場合
+//             console.log("//");
+//             index += 2;
+//             if (indicator[index + 1] === "*") {
+//                 break;
+//             }
+//             let name = '';
+//             do {
+//                 if ((indicator[index]=='"') || (indicator[index]=="'")
+//                         || (indicator[index]=="*") || (indicator[index]==".")) {
+//                     error_get_multi_value = "#INVALID?";
+//                     return null;
+//                 }
+//                 name += indicator[index];
+//                 index += 1;
+//             } while((index !== length) && (indicator[index] !== "/"));
+//             console.log(name);
+//             node_list.forEach((node) => {
+//                 children = node.descendants().filter((d) => {return d.data.name === name;});
+//                 new_node_list = new_node_list.concat(children);
+//             })
+//         } else {
+//             // "/"の場合
+//             console.log("/");
+//             index += 1;
+//             if (indicator[index + 1] === "*") {
+//                 break;
+//             }
+//             let name = '';
+//             do {
+//                 if ((indicator[index]=='"') || (indicator[index]=="'")
+//                         || (indicator[index]=="*") || (indicator[index]==".")) {
+//                     error_get_multi_value = "#INVALID?";
+//                     return null;
+//                 }
+//                 name += indicator[index];
+//                 index += 1;
+//             } while((index !== length) && (indicator[index] !== "/"));
+//             // console.log(name);
+//             node_list.forEach((node) => {
+//                 const depth = node.depth;
+//                 children = node.descendants()
+//                         .filter((d) => {return (d.depth == depth+1) && (d.data.name === name);});
+//                 new_node_list = new_node_list.concat(children);
+//             })
+//         }
+//         node_list = new_node_list;
+//     } while((index !== length) || (indicator[index] === '/'));
+//     if (index === length) {
+//         return node_list;
+//     }
+//     if (indicator[index] !== '*') {
+//         error_get_multi_value = "#INVALID?";
+//         return null;
+//     }
+//     if (index + 1 === length) {
+//         // "*"
+//         let list = [];
+//             const depth = node.depth;
+//         node_list.forEach((node) => {
+//             children = node.descendants()
+//                    .filter((d) => {return d.depth == depth+1;});
+//             list = list.concat(children);
+//         })
+//         return list;
+//     } else {
+//         if (index + 2 !== length) {
+//             error_get_multi_value = "#INVALID?";
+//             return null;
+//         }
+//         if (indicator[index+1] !== "*") {
+//             error_get_multi_value = "#INVALID?";
+//             return null;
+//         }
+//         // "**"
+//         let list = [];
+//         node_list.forEach((node) => {
+//             children = node.descendants();
+//             list = list.concat(children);
+//         })
+//         return list;
+//     }
+// }
 
 
 function deleteNode(node, visited) {
     // console.log("deleteNode", getNodeName(node), node);
-
     clear_src(node);
     clear_path(node);
     clear_path_rev(node);
@@ -991,6 +1043,7 @@ function deleteNode(node, visited) {
     setNodeDisp(node, "");
     setNodeValue(node, "");
     clear_ref(node, visited);
+    // clear_asterisk(node); このような処理は clear_pathでＯＫ
     // console.log(node);
     if (node.children) {
         // console.log(node.children);
@@ -1192,23 +1245,10 @@ function rename_reexpr_Node(node, new_name, new_expr ) {
 //新しいノードを作る
 //TODO rootの子を作る
 function new_Node(node, new_name, new_expr ) {
-    // console.log("start new_Node");
+    console.log("start new_Node");
     const rootNode = node.ancestors ? node.ancestors().pop() : node;
     const parent_node = node.parent;
-    // console.log(node);
-    // console.log(parent_node);
-    // const check_name = parent_node.children.find(child =>
-    //         child.data.name === new_name);
-    // if (check_name !== undefined) {
-    //     alert(`ノード名「${new_name}」は重複しています。`);
-    //     return false;
-    // }
-    
-    // console.log(node.data);
-    // node.data.name = new_name;
-    // node.data.expr = new_expr;
-    // node.data.value = null;
-    // node.data.disp = null;
+
     node.link_ref_set = new Set();
     node.link_src_set = new Set();
     node.link_path_set = new Set();
@@ -1232,17 +1272,6 @@ function new_Node(node, new_name, new_expr ) {
             setNodeRepExpr(d, "");
         });
 
-
-    // rootNode.descendants()
-    //     .filter(d => function(d) {
-    //             const value = getNodeValue(d);
-    //             return value.startsWith("#"); })
-        // .forEach(d => {
-        //     setNodeDisp(d, "");
-        //     setNodeValue(d, "");
-        //     setNodeRepExpr(d, "");
-        // });
-
     const sameNodes = rootNode.descendants()
         .filter(d => getNodeName(d) === new_name);
     sameNodes.forEach(d => {
@@ -1253,6 +1282,29 @@ function new_Node(node, new_name, new_expr ) {
     sameNodes.forEach(d => {
         clear_path_rev(d);
     })
+
+    console.log(parent_node);
+    if (parent_node.asterisk_child) {
+        setNodeDisp(parent_node, "");
+        setNodeValue(parent_node, "");
+        setNodeRepExpr(parent_node, "");
+        let visited = new Set();
+        clear_ref(parent_node, visited);
+        clear_path_rev(parent_node);
+    }
+    let ancestor = parent_node;
+    do {
+        if (ancestor.asterisk_descendant) {
+            setNodeDisp(ancestor, "");
+            setNodeValue(ancestor, "");
+            setNodeRepExpr(ancestor, "");
+            let visited = new Set();
+            clear_ref(ancestor, visited);
+            clear_path_rev(ancestor);
+        }
+        ancestor = ancestor.parent;
+    } while (ancestor);
+    
     rootNode.descendants()
         .filter(d => (getNodeValue(d) === null))
         .forEach(d => {
@@ -1281,6 +1333,26 @@ function changeParent(node, new_parent) {
         clear_ref(d, visited);
         clear_path_rev(d);
     })
+
+    let parent_node = node.parent;
+    if (parent_node.asterisk_child) {
+        setNodeDisp(parent_node, "");
+        setNodeValue(parent_node, "");
+        setNodeRepExpr(parent_node, "");
+        let visited = new Set();
+        clear_ref(parent_node, visited);
+    }
+    let ancestor = parent_node;
+    do {
+        if (ancestor.asterisk_descendant) {
+            setNodeDisp(ancestor, "");
+            setNodeValue(ancestor, "");
+            setNodeRepExpr(ancestor, "");
+            let visited = new Set();
+            clear_ref(ancestor, visited);
+        }
+        ancestor = ancestor.parent;
+    } while (ancestor);
 
     const name = getNodeName(node);
     // 移動したノードのノード名と同じノード名を参照していた他のノードの計算結果のクリア

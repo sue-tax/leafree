@@ -10,6 +10,22 @@
 
 
 
+### 子ノードの追加
+
+ノードのメニュー「子ノード追加」(#menu-item-child)
+
+insertChild( node )  直接openNewChildEditorを呼べばよい
+
+openNewChildEditor( node )
+
+シフトキーを押しながらノードをダブルクリック
+
+##### openNewChildEditor( node )
+
+##### addChildNode( parentNode, name, expr )
+
+==再計算用の処理は、new_Node  要確認==
+
 ### ノードの削除
 
 
@@ -141,6 +157,8 @@ checkNodeNameBrother(nodeParent)
 ロード時
 
 ### ノード内容
+
+#### clacEachNode(node)
 
 #### 計算式
 

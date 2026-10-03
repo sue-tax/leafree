@@ -236,6 +236,9 @@ function getNodeFontSize(d) {
 function setNodeFontSize(d, font) {
     return d.data.setAttribute("font-size", font);
 }
+function removeNodeFontSize(d) {
+    return d.data.removeAttribute("font-size");
+}
 
 function getNodeColor(d) {
     return d.data.getAttribute("color");
@@ -271,7 +274,7 @@ function setNodePadWidth(d, value) {
     d.data.setAttribute("pad_width", value);
 }
 function removeNodePadWidth(d) {
-    d.data.removeAttribute(d, "pad_width");
+    d.data.removeAttribute("pad_width");
 }
 
 function getNodePadHeightChild(d) {
@@ -281,7 +284,7 @@ function setNodePadHeightChild(d, value) {
     d.data.setAttribute("pad_height_child", value);
 }
 function removeNodePadHeightChild(d) {
-    d.data.removeAttribute(d, "pad_height_child");
+    d.data.removeAttribute("pad_height_child");
 }
 
 function getNodePadHeightBrother(d) {
@@ -291,7 +294,7 @@ function setNodePadHeightBrother(d, value) {
     d.data.setAttribute("pad_height_brother", value);
 }
 function removeNodePadHeightBrother(d) {
-    d.data.removeAttribute(d, "pad_height_brother");
+    d.data.removeAttribute("pad_height_brother");
 }
 
 function getNodePadHeightParent(d) {
@@ -301,7 +304,7 @@ function setNodePadHeightParent(d, value) {
     d.data.setAttribute("pad_height_parent", value);
 }
 function removeNodePadHeightParent(d) {
-    d.data.removeAttribute(d, "pad_height_parent");
+    d.data.removeAttribute("pad_height_parent");
 }
 
 function getTreeDistWidth(root) {
@@ -322,6 +325,26 @@ function setTreeDistHeightChild(root, value) {
 }
 function removeTreeDistHeightChild(root) {
     root.data.removeAttribute("dist_height_child");
+}
+
+function getTreeDistHeightBrother(root) {
+    return Number(root.data.getAttribute("dist_height_brother")) || undefined;
+}
+function setTreeDistHeightBrother(root, value) {
+    root.data.setAttribute("dist_height_brother", value);
+}
+function removeTreeDistHeightBrother(root) {
+    root.data.removeAttribute("dist_height_brother");
+}
+
+function getTreeDistHeightParent(root) {
+    return Number(root.data.getAttribute("dist_height_parent")) || undefined;
+}
+function setTreeDistHeightParent(root, value) {
+    root.data.setAttribute("dist_height_parent", value);
+}
+function removeTreeDistHeightParent(root) {
+    root.data.removeAttribute("dist_height_parent");
 }
 
 function get_min_rectW_default(root) {
@@ -348,26 +371,46 @@ function set_min_rectH_default(root, min_rectH_default) {
         root.data.setAttribute("min_rectH_default", min_rectH_default);
     }
 }
+
 function getNodeFontFamilyDefault(root) {
     return root.data.getAttribute("font-family_default");
 }
 function setNodeFontFamilyDefault(root, font) {
     return root.data.setAttribute("font-family_default", font);
 }
+function removeNodeFontFamilyDefault(root) {
+    return root.data.removeAttribute("font-family_default");
+}
+
 function getNodeFontSizeDefault(root) {
     return root.data.getAttribute("font-size_defalut");
 }
 function setNodeFontSizeDefault(root, font) {
     return root.data.setAttribute("font-size_defalut", font);
 }
+function removeNodeFontSizeDefault(root) {
+    return root.data.removeAttribute("font-size_defalut");
+}
+
 function getNodeColorDefault(root) {
     return root.data.getAttribute("color_default");
 }
-function setNodeColorDefault(root, font) {
-    return root.data.setAttribute("color_default", font);
+function setNodeColorDefault(root, value) {
+    return root.data.setAttribute("color_default", value);
+}
+function removeNodeColorDefault(root) {
+    return root.data.removeAttribute("color_default");
 }
 
-
+function getNodeFormatDefault(root) {
+    return root.data.getAttribute("format_default");
+}
+function setNodeFormatDefault(root, font) {
+    return root.data.setAttribute("format_default", font);
+}
+function removeNodeFormatDefault(root) {
+    return root.data.removeAttribute("format_default");
+}
 
 
 //そのノードnodeが参照しているノード(node.link_src_setから辿る）
@@ -440,3 +483,9 @@ function clear_path_rev(node) {
         }
     )
 }
+
+// function clear_asterisk(node) {
+//     if (node.asterisk_child) {
+
+//     }
+// }
