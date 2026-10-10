@@ -412,6 +412,50 @@ function removeNodeFormatDefault(root) {
     return root.data.removeAttribute("format_default");
 }
 
+function getNodeShowNodeName(node) {
+    const value = node.data.getAttribute("show_node_name");
+    return value;
+}
+function setNodeShowNodeName(node, value) {
+    return node.data.setAttribute("show_node_name", value);
+}
+
+function getNodeShowNodeExpr(node) {
+    const value = node.data.getAttribute("show_node_expr");
+    return value;
+}
+function setNodeShowNodeExpr(node, value) {
+    return node.data.setAttribute("show_node_expr", value);
+}
+
+// TODO 
+
+function getNodeShowNodeNameDefault(root) {
+    const value = root.data.getAttribute("show_node_name_default");
+    return value === null ? "true" : value;
+}
+function setNodeShowNodeNameDefault(root, flag) {
+    return root.data.setAttribute("show_node_name_default", flag);
+}
+
+function getNodeShowParent(node) {
+    const value = node.data.getAttribute("show_path_parent");
+    return value; // === null ? "true" : value;
+}
+function setNodeShowParent(node, flag) {
+    return node.data.setAttribute("show_path_parent", flag);
+}
+
+
+function getNodeShowRelationDefault(root) {
+    const value = root.data.getAttribute("show_relation_default");
+    // console.log("get ShowRel", value);
+    return value === null ? "true" : value;
+}
+function setNodeShowRelationDefault(root, flag) {
+    // console.log("set ShowRel", flag)
+    return root.data.setAttribute("show_relation_default", flag);
+}
 
 //そのノードnodeが参照しているノード(node.link_src_setから辿る）
 //のlink_ref_setからnodeを削除する

@@ -122,6 +122,11 @@ function checkNodeNameBrother(nodeParent) {
                 duplicates = new Set([...duplicates, ...dup_child]);
             }
         } )
+        // console.log(duplicates);
+        if (duplicates.size === 0) {
+            return null;
+        }
+        console.log(duplicates);
         return duplicates;
     }
     let duplicates = new Set();
@@ -131,9 +136,11 @@ function checkNodeNameBrother(nodeParent) {
             duplicates = new Set([...duplicates, ...dup_child]);
         }
     } )
+    // console.log(duplicates);
     if (duplicates.size === 0) {
         return null;
     }
+    console.log(duplicates);
     return duplicates;
 }
 
@@ -556,7 +563,7 @@ function calcEachNode(node) {
                     // child_node.link_child_parent_set.add(node);
                     value_list.push(value);
                 });
-                console.log(value_list);
+                // console.log(value_list);
                 dst += "[" + value_list.join(",") + "]";
             } else if (expr[index] === "'") {
                 // ノード指定
@@ -605,7 +612,12 @@ function calcEachNode(node) {
             result = "'" + dst.slice(1, dst.length-1);            
         } else {
             // console.log(dst);
-            result = math.evaluate(dst);
+            //
+            try {
+                result = math.evaluate(dst);
+            } catch (error) {
+                result = "#CALC_ERROR:" + dst;
+            }
         }
 
         //TODO 参照先ノードが文字列の場合はevaluateしない
@@ -820,9 +832,9 @@ function get_multi_value_xpath(node, base_node, indicator) {
         error_get_multivalue = "#INVALID_NODE_PATH"
         return null;
     }
-    console.log(str_xpath);
+    // console.log(str_xpath);
     const xml_doc = base_node.data.ownerDocument;
-    console.log(base_node);
+    // console.log(base_node);
     const xpathResult = xml_doc.evaluate(
         str_xpath, 
         base_node.data, 
@@ -1060,9 +1072,6 @@ function deleteNode(node, visited) {
             setNodeDisp(d, "");
             setNodeValue(d, "");
         });
-    // print_root(rootNode);
-    // alert("111111");
-
     // 1. XML DOM から削除
     if (node.data && node.data.parentNode) {
         node.data.parentNode.removeChild(node.data);
@@ -1078,26 +1087,10 @@ function deleteNode(node, visited) {
             node.parent.children = null;
         }
     }
-
-    // print_root(rootNode);
-    // alert("22222");
-
-    // 3. 参照関係の後始末
-    // rootNode.descendants().forEach(d => {
-    //     d.link_ref_set?.delete(node);
-    //     d.link_src_set?.delete(node);
-    // });
-
-    // console.log("AAAAAAAAA");
-    // print_root(rootNode);
-    // console.log("BBBBBBBB");
-    // // 4. 未計算ノードを再計算
-    // alert("33333");
-
     rootNode.descendants()
         .filter(d => d.data && getNodeValueNoCalc(d) === "")
         .forEach(d => {
-            console.log("before calaEachNode", d);
+            // console.log("before calaEachNode", d);
             calcEachNode(d);
         });
 }
